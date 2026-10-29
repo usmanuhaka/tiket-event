@@ -86,13 +86,18 @@ func batalkanTiket(ctx context.Context, db *sql.DB, tiketID, userID int64, now t
 	// 4. kunci tiket, lalu periksa statusnya (menolak pembatalan ganda)
 	var kategoriID, tahapID, hargaBayar int64
 	var status string
+	var sudahDipindah bool
 	if err := tx.QueryRowContext(ctx,
-		"SELECT category_id, price_tier_id, harga_bayar, status FROM tickets WHERE id = ? FOR UPDATE", tiketID,
-	).Scan(&kategoriID, &tahapID, &hargaBayar, &status); err != nil {
+		"SELECT category_id, price_tier_id, harga_bayar, status, sudah_dipindah FROM tickets WHERE id = ? FOR UPDATE", tiketID,
+	).Scan(&kategoriID, &tahapID, &hargaBayar, &status, &sudahDipindah); err != nil {
 		return hasil, err
 	}
 	if status != tiketActive {
 		return hasil, salahInput("Tiket ini tidak bisa dibatalkan (status %s)", status)
+	}
+	// tiket yang sudah dipindahkan ke orang lain tidak bisa dibatalkan pembeli (keputusan di PRD §9)
+	if sudahDipindah {
+		return hasil, salahInput("Tiket yang sudah dipindahkan tidak bisa dibatalkan")
 	}
 
 	// BR-17: paling lambat H-7, dihitung per tanggal kalender Jakarta
