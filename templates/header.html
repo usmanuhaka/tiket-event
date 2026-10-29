@@ -1,4 +1,14 @@
 {{define "header"}}
     <span class="brand">Tiket Event</span>
     <span class="tagline">Komunitas Musik Kampus</span>
+    <div class="user">
+        {{if .Nama}}
+            {{.Nama}} ({{.Peran}})
+            <form method="POST" action="/logout">
+                <button class="btn btn-light btn-sm">Logout</button>
+            </form>
+        {{else}}
+            <a href="/login">Login</a>
+        {{end}}
+    </div>
 {{end}}
