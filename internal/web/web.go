@@ -29,7 +29,11 @@ func AddOne(n int) int {
 	return n + 1
 }
 
-var funcs = template.FuncMap{"rupiah": Rupiah, "add_one": AddOne}
+var funcs = template.FuncMap{
+	"rupiah":  Rupiah,
+	"add_one": AddOne,
+	"tanggal": Tanggal,
+}
 
 // ParseHalaman memuat layout + header + sidebar + footer + satu file halaman.
 // Path relatif terhadap folder proyek, jadi server harus dijalankan dari root proyek.

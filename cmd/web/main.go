@@ -8,12 +8,12 @@ import (
 	"net/http"
 	"os"
 	"time"
-	_ "time/tzdata" // data zona waktu ikut di dalam program, supaya Asia/Jakarta selalu dikenali
 
 	_ "github.com/go-sql-driver/mysql"
 	"github.com/joho/godotenv"
 
 	"github.com/usmanuhaka/tiket-event/internal/auth"
+	"github.com/usmanuhaka/tiket-event/internal/event"
 	"github.com/usmanuhaka/tiket-event/internal/web"
 )
 
@@ -48,6 +48,9 @@ func main() {
 
 	// login, daftar, logout
 	auth.RegisterRoutes(mux, db)
+
+	// pengelolaan event, kategori, tahap harga (khusus ADMIN)
+	event.RegisterRoutes(mux, db)
 
 	// MuatPengguna membungkus semua route: setiap request dicek cookie sesinya dulu
 	app := auth.MuatPengguna(db, mux)

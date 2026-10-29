@@ -1,0 +1,142 @@
+{{define "content"}}
+    <div class="page-head clearfix">
+        <h3 class="float-left">{{.Event.Nama}} <span class="badge badge-{{.Event.Status}}">{{.Event.Status}}</span></h3>
+        <a href="/admin/event" class="btn btn-light float-right">&larr; Kembali</a>
+    </div>
+
+    <table class="table">
+        <tbody>
+            <tr><th width="200px">Tanggal</th><td>{{tanggal .Event.TanggalEvent}}</td></tr>
+            <tr><th>Lokasi</th><td>{{.Event.Lokasi}}</td></tr>
+            <tr><th>Kapasitas</th><td>{{.Event.Kapasitas}} orang (sudah dibagi ke kategori: {{.TotalKuotaKategori}})</td></tr>
+            <tr><th>Deskripsi</th><td>{{.Event.Deskripsi}}</td></tr>
+        </tbody>
+    </table>
+
+    {{if .BisaDiubah}}
+        <div class="actions" style="margin-bottom: 20px">
+            <form method="POST" action="/admin/event/{{.Event.ID}}/buka"
+                onsubmit="return confirm('Buka penjualan? Setelah dibuka, kategori dan tahap tidak bisa diubah.')">
+                <button class="btn">Buka Penjualan</button>
+            </form>
+            <a href="/admin/event/{{.Event.ID}}/edit" class="btn btn-light">Edit Event</a>
+            <form method="POST" action="/admin/event/{{.Event.ID}}/hapus"
+                onsubmit="return confirm('Hapus event ini beserta kategori dan tahapnya?')">
+                <button class="btn btn-danger">Hapus Event</button>
+            </form>
+        </div>
+    {{else}}
+        <p class="form-hint">Penjualan sudah dibuka: kategori dan tahap harga tidak bisa diubah lagi.</p>
+    {{end}}
+
+    {{if .Masalah}}
+        <div class="alert alert-error">
+            Penjualan belum bisa dibuka:
+            <ul>
+                {{range .Masalah}}<li>{{.}}</li>{{end}}
+            </ul>
+        </div>
+    {{end}}
+
+    <h4>Kategori Tiket dan Tahap Harga</h4>
+
+    {{range .Kategori}}
+        <div class="kotak">
+            <div class="page-head clearfix">
+                <h4 class="float-left">{{.Nama}} &middot; kuota {{.Kuota}}
+                    <small>(sudah dibagi ke tahap: {{.TotalKuotaTahap}})</small>
+                </h4>
+                {{if $.BisaDiubah}}
+                    <form class="float-right" method="POST" action="/admin/event/{{$.Event.ID}}/kategori/{{.ID}}/hapus"
+                        onsubmit="return confirm('Hapus kategori ini beserta tahapnya?')">
+                        <button class="btn btn-danger btn-sm">Hapus Kategori</button>
+                    </form>
+                {{end}}
+            </div>
+
+            <p>
+                Tahap aktif saat ini:
+                {{if .AdaAktif}}
+                    <strong>{{.Aktif.Nama}}</strong> &middot; {{rupiah .Aktif.Harga}} &middot; sisa {{.Aktif.SisaKuota}}
+                {{else}}
+                    <strong>Habis</strong>
+                {{end}}
+            </p>
+
+            <table class="table">
+                <thead>
+                    <tr>
+                        <th width="50px">No</th>
+                        <th>Tahap</th>
+                        <th class="num">Harga</th>
+                        <th class="num">Kuota</th>
+                        <th class="num">Sisa</th>
+                        <th>Batas Tanggal</th>
+                        {{if $.BisaDiubah}}<th>Aksi</th>{{end}}
+                    </tr>
+                </thead>
+                <tbody>
+                {{range $i, $t := .Tahap}}
+                    <tr>
+                        <td>{{add_one $i}}</td>
+                        <td>{{$t.Nama}}</td>
+                        <td class="num">{{rupiah $t.Harga}}</td>
+                        <td class="num">{{$t.Kuota}}</td>
+                        <td class="num">{{$t.SisaKuota}}</td>
+                        <td>{{tanggal $t.BatasTanggal}}</td>
+                        {{if $.BisaDiubah}}
+                            <td>
+                                <form method="POST" action="/admin/event/{{$.Event.ID}}/tahap/{{$t.ID}}/hapus"
+                                    onsubmit="return confirm('Hapus tahap ini?')">
+                                    <button class="btn btn-danger btn-sm">Hapus</button>
+                                </form>
+                            </td>
+                        {{end}}
+                    </tr>
+                {{else}}
+                    <tr><td colspan="7">Belum ada tahap harga.</td></tr>
+                {{end}}
+                </tbody>
+            </table>
+
+            {{if $.BisaDiubah}}
+                <form class="form-baris" method="POST" action="/admin/event/{{$.Event.ID}}/kategori/{{.ID}}/tahap">
+                    <div class="form-group">
+                        <label>Nama Tahap</label>
+                        <input type="text" name="nama" class="form-control" maxlength="100" placeholder="Presale 1" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Harga</label>
+                        <input type="number" name="harga" class="form-control" min="0" step="1" placeholder="150000" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Kuota</label>
+                        <input type="number" name="kuota" class="form-control" min="1" step="1" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Batas Tanggal</label>
+                        <input type="datetime-local" name="batas_tanggal" class="form-control" required>
+                    </div>
+                    <button type="submit" class="btn">+ Tambah Tahap</button>
+                </form>
+            {{end}}
+        </div>
+    {{else}}
+        <p>Belum ada kategori tiket.</p>
+    {{end}}
+
+    {{if .BisaDiubah}}
+        <h4>Tambah Kategori</h4>
+        <form class="form-baris" method="POST" action="/admin/event/{{.Event.ID}}/kategori">
+            <div class="form-group">
+                <label>Nama Kategori</label>
+                <input type="text" name="nama" class="form-control" maxlength="100" placeholder="Festival" required>
+            </div>
+            <div class="form-group">
+                <label>Kuota</label>
+                <input type="number" name="kuota" class="form-control" min="1" step="1" required>
+            </div>
+            <button type="submit" class="btn">+ Tambah Kategori</button>
+        </form>
+    {{end}}
+{{end}}

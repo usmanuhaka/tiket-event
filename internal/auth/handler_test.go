@@ -1,7 +1,6 @@
 package auth
 
 import (
-	"context"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -15,7 +14,7 @@ func keRootProyek(t *testing.T) {
 
 // denganPengguna meniru hasil MuatPengguna: request membawa pengguna yang sudah login
 func denganPengguna(r *http.Request, u User) *http.Request {
-	return r.WithContext(context.WithValue(r.Context(), kunciPengguna, u))
+	return DenganPengguna(r, u)
 }
 
 func halamanOK(w http.ResponseWriter, r *http.Request) {

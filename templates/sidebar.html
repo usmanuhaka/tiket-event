@@ -7,4 +7,10 @@
             <li><a href="/daftar">Daftar</a></li>
         {{end}}
     </ul>
+    {{if eq .Peran "ADMIN"}}
+        <p class="menu-title">Admin</p>
+        <ul>
+            <li><a href="/admin/event">Kelola Event</a></li>
+        </ul>
+    {{end}}
 {{end}}
