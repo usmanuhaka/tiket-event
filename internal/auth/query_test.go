@@ -10,10 +10,10 @@ import (
 	"github.com/usmanuhaka/tiket-event/internal/testdb"
 )
 
-// bukaDBKosong membuka database test dengan tabel users dan sessions kosong
+// bukaDBKosong membuka database test dengan semua tabel kosong
 func bukaDBKosong(t *testing.T) *sql.DB {
 	db := testdb.Buka(t)
-	testdb.Kosongkan(t, db, "sessions", "users")
+	testdb.KosongkanSemua(t, db)
 	return db
 }
 

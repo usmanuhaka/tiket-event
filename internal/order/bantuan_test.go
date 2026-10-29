@@ -11,10 +11,10 @@ import (
 
 // Helper bersama untuk test integrasi paket order.
 
-// bukaDBKosong membuka database test dengan tabel pesanan, event, dan user kosong
+// bukaDBKosong membuka database test dengan semua tabel kosong
 func bukaDBKosong(t *testing.T) *sql.DB {
 	db := testdb.Buka(t)
-	testdb.Kosongkan(t, db, "tickets", "orders", "price_tiers", "ticket_categories", "events", "sessions", "users")
+	testdb.KosongkanSemua(t, db)
 	return db
 }
 
