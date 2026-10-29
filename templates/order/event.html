@@ -1,0 +1,72 @@
+{{define "content"}}
+    <div class="page-head clearfix">
+        <h3 class="float-left">{{.Event.Nama}}</h3>
+        <a href="/event" class="btn btn-light float-right">&larr; Kembali</a>
+    </div>
+
+    <p>{{tanggal .Event.TanggalEvent}} &middot; {{.Event.Lokasi}}</p>
+    {{if .Event.Deskripsi}}<p>{{.Event.Deskripsi}}</p>{{end}}
+
+    <h4>Harga Tiket Saat Ini</h4>
+    <table class="table">
+        <thead>
+            <tr>
+                <th>Kategori</th>
+                <th>Tahap</th>
+                <th class="num">Harga</th>
+                <th class="num">Sisa</th>
+            </tr>
+        </thead>
+        <tbody>
+        {{range .Kategori}}
+            <tr>
+                <td>{{.Nama}}</td>
+                {{if .AdaAktif}}
+                    <td>{{.Aktif.Nama}}</td>
+                    <td class="num">{{rupiah .Aktif.Harga}}</td>
+                    <td class="num">{{.Sisa}}</td>
+                {{else}}
+                    <td colspan="3"><strong>Habis</strong></td>
+                {{end}}
+            </tr>
+        {{end}}
+        </tbody>
+    </table>
+    <p class="form-hint">
+        Harga per tiket mengikuti tahap. Jika sisa tahap saat ini kurang dari jumlah yang dipesan,
+        tiket berikutnya memakai harga tahap sesudahnya.
+    </p>
+
+    <h4>Pesan Tiket</h4>
+    {{if eq .Peran "PEMBELI"}}
+        <p>Isi 1 sampai 4 tiket. Baris yang dibiarkan kosong diabaikan. Tiket ditahan 15 menit untuk dibayar.</p>
+        <form method="POST" action="/event/{{.Event.ID}}/pesan">
+            {{range $i, $baris := .Isian}}
+                <div class="form-baris">
+                    <div class="form-group">
+                        <label>Tiket ke-{{add_one $i}}: Kategori</label>
+                        <select name="kategori_{{add_one $i}}" class="form-control">
+                            <option value="">-- pilih --</option>
+                            {{range $.Kategori}}
+                                {{if .AdaAktif}}
+                                    <option value="{{.ID}}" {{if eq .ID $baris.KategoriID}}selected{{end}}>{{.Nama}}</option>
+                                {{end}}
+                            {{end}}
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Nama Pemegang</label>
+                        <input type="text" name="nama_{{add_one $i}}" value="{{$baris.Nama}}" class="form-control" maxlength="100">
+                    </div>
+                </div>
+            {{end}}
+            <div class="form-actions">
+                <button type="submit" class="btn">Pesan</button>
+            </div>
+        </form>
+    {{else if .Nama}}
+        <p>Pemesanan hanya untuk akun pembeli.</p>
+    {{else}}
+        <p><a href="/login">Login</a> atau <a href="/daftar">daftar</a> sebagai pembeli untuk memesan tiket.</p>
+    {{end}}
+{{end}}
