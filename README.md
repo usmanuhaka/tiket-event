@@ -28,6 +28,19 @@ Spesifikasi lengkap ada di [docs/PRD.md](docs/PRD.md).
 |---|---|
 | `001_users.sql` | tabel `users` dan `sessions` |
 | `002_data_contoh_users.sql` | akun demo (lihat di bawah) |
+| `003_events.sql` | tabel `events`, `ticket_categories`, `price_tiers` |
+| `004_data_contoh_events.sql` | 2 event contoh dengan tanggal relatif dari saat file dijalankan: "Konser Akhir Tahun" (OPEN, ±45 hari lagi) dan "Seminar Produksi Musik" (DRAFT, sengaja belum lengkap untuk demo "Buka Penjualan" yang ditolak) |
+
+Karena tanggal di `004` dihitung dengan `DATE_ADD(NOW(), ...)`, menjalankan ulang file itu tidak menggeser tanggal
+event yang sudah ada (`INSERT IGNORE` melewatinya). Untuk data baru, hapus dulu event contoh lewat phpMyAdmin.
+
+## Mengelola event (Admin)
+Login sebagai admin, lalu buka menu **Kelola Event**:
+1. **Tambah Event**: event baru berstatus `DRAFT`.
+2. Di halaman detail, tambah **kategori** (total kuota ≤ kapasitas) lalu **tahap harga** per kategori.
+   Selama DRAFT, kategori dan tahap bisa dihapus lalu ditambah ulang.
+3. Klik **Buka Penjualan**. Jika ada syarat yang belum terpenuhi, semua masalahnya ditampilkan.
+   Setelah `OPEN`, kategori dan tahap terkunci.
 
 ## Akun demo
 Dibuat oleh `migrations/002_data_contoh_users.sql`.
