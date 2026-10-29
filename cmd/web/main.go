@@ -15,6 +15,7 @@ import (
 	"github.com/usmanuhaka/tiket-event/internal/auth"
 	"github.com/usmanuhaka/tiket-event/internal/event"
 	"github.com/usmanuhaka/tiket-event/internal/order"
+	"github.com/usmanuhaka/tiket-event/internal/promo"
 	"github.com/usmanuhaka/tiket-event/internal/web"
 )
 
@@ -55,6 +56,9 @@ func main() {
 
 	// katalog event, pemesanan, dan pembayaran (pembeli)
 	order.RegisterRoutes(mux, db)
+
+	// kode promo (khusus ADMIN)
+	promo.RegisterRoutes(mux, db)
 
 	// BR-10: worker berjalan di latar belakang (goroutine), memeriksa pesanan kedaluwarsa tiap 1 menit
 	go order.JalankanWorker(context.Background(), db, time.Minute)
