@@ -55,6 +55,7 @@ func Kosongkan(t *testing.T, db *sql.DB, tabel ...string) {
 // Tambahkan tabel baru di sini setiap ada migrasi baru.
 var semuaTabel = []string{
 	"tickets", "orders",
+	"promo_categories", "promo_codes",
 	"price_tiers", "ticket_categories", "events",
 	"sessions", "users",
 }

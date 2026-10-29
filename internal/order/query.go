@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/usmanuhaka/tiket-event/internal/event"
+	"github.com/usmanuhaka/tiket-event/internal/promo"
 )
 
 // ErrTidakDitemukan dikembalikan jika event atau pesanan tidak ada,
@@ -29,6 +30,7 @@ type Pesanan struct {
 	ExpiresAt     time.Time
 	PaidAt        sql.NullTime
 	CreatedAt     time.Time
+	KodePromo     string // kosong jika tanpa promo
 	Tiket         []Tiket
 }
 
@@ -49,8 +51,9 @@ type Tiket struct {
 
 // buatPesanan menahan tiket untuk pembeli: kuota langsung berkurang dan pesanan berstatus HELD
 // selama 15 menit. Semua langkah ada di satu transaksi, jadi jika satu langkah gagal
-// tidak ada kuota yang berkurang dan tidak ada pesanan setengah jadi.
-func buatPesanan(ctx context.Context, db *sql.DB, userID, eventID int64, baris []BarisTiket, now time.Time) (int64, error) {
+// tidak ada kuota yang berkurang, tidak ada pemakaian promo, dan tidak ada pesanan setengah jadi.
+// kodePromo boleh kosong (tanpa promo).
+func buatPesanan(ctx context.Context, db *sql.DB, userID, eventID int64, kodePromo string, baris []BarisTiket, now time.Time) (int64, error) {
 	if err := ValidasiPesanan(baris); err != nil {
 		return 0, err
 	}
@@ -142,12 +145,43 @@ func buatPesanan(ctx context.Context, db *sql.DB, userID, eventID int64, baris [
 		}
 	}
 
+	// 3. promo (jika diisi) dikunci PALING AKHIR, sesudah event dan tahap
+	potongan := make([]int64, len(baris)) // tanpa promo: semua 0
+	var promoID sql.NullInt64             // NULL jika tanpa promo
+	if strings.TrimSpace(kodePromo) != "" {
+		p, err := promo.KunciPromo(ctx, tx, kodePromo)
+		var salahPromo promo.KesalahanInput
+		if errors.As(err, &salahPromo) {
+			return 0, salahInput("%s", salahPromo.Pesan) // mis. "Kode promo tidak ditemukan"
+		}
+		if err != nil {
+			return 0, err
+		}
+		// BR-16: promo yang kuotanya habis tidak bisa dipakai
+		if !p.MasihAdaKuota() {
+			return 0, salahInput("Kuota promo %s sudah habis", p.Kode)
+		}
+		// BR-14: potongan hanya untuk tiket dari kategori yang terdaftar di promo
+		potongan, err = PotonganPesanan(baris, tiket, p)
+		if err != nil {
+			return 0, err
+		}
+		// BR-15: satu pemakaian per pesanan, dihitung sekarang (saat pesanan dibuat)
+		if err := promo.PakaiPromo(ctx, tx, p.ID); err != nil {
+			return 0, err
+		}
+		promoID = sql.NullInt64{Int64: p.ID, Valid: true}
+	}
+	var totalPotongan int64
+	for _, x := range potongan {
+		totalPotongan += x
+	}
+
 	// BR-09: pesanan HELD, harus dibayar paling lambat 15 menit lagi
-	// (promo belum ada: potongan 0, total bayar = total harga)
 	res, err := tx.ExecContext(ctx,
-		`INSERT INTO orders (user_id, event_id, status, total_harga, total_potongan, total_bayar, expires_at)
-		VALUES (?, ?, ?, ?, 0, ?, ?)`,
-		userID, eventID, StatusHeld, totalHarga, totalHarga, BatasBayar(now),
+		`INSERT INTO orders (user_id, event_id, promo_code_id, status, total_harga, total_potongan, total_bayar, expires_at)
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+		userID, eventID, promoID, StatusHeld, totalHarga, totalPotongan, totalHarga-totalPotongan, BatasBayar(now),
 	)
 	if err != nil {
 		return 0, err
@@ -157,12 +191,14 @@ func buatPesanan(ctx context.Context, db *sql.DB, userID, eventID int64, baris [
 		return 0, err
 	}
 
-	// BR-07: satu baris tiket per pemegang, kode tiket baru dibuat saat dibayar
+	// BR-07: satu baris tiket per pemegang, kode tiket baru dibuat saat dibayar.
+	// potongan dan harga_bayar disimpan per tiket, menjadi dasar refund (BR-18).
 	for i, b := range baris {
 		if _, err := tx.ExecContext(ctx,
 			`INSERT INTO tickets (order_id, category_id, price_tier_id, nama_pemegang, harga, potongan, harga_bayar, status)
-			VALUES (?, ?, ?, ?, ?, 0, ?, ?)`,
-			orderID, b.KategoriID, tiket[i].TahapID, strings.TrimSpace(b.NamaPemegang), tiket[i].Harga, tiket[i].Harga, TiketHeld,
+			VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+			orderID, b.KategoriID, tiket[i].TahapID, strings.TrimSpace(b.NamaPemegang),
+			tiket[i].Harga, potongan[i], tiket[i].Harga-potongan[i], TiketHeld,
 		); err != nil {
 			return 0, err
 		}
@@ -201,11 +237,12 @@ func ambilPesananMilik(ctx context.Context, db *sql.DB, id, userID int64) (Pesan
 
 	err := db.QueryRowContext(ctx,
 		`SELECT o.id, o.user_id, o.event_id, e.nama, e.tanggal_event, o.status,
-			o.total_harga, o.total_potongan, o.total_bayar, o.expires_at, o.paid_at, o.created_at
+			o.total_harga, o.total_potongan, o.total_bayar, o.expires_at, o.paid_at, o.created_at, COALESCE(pc.kode, '')
 		FROM orders o JOIN events e ON e.id = o.event_id
+		LEFT JOIN promo_codes pc ON pc.id = o.promo_code_id
 		WHERE o.id = ? AND o.user_id = ?`, id, userID,
 	).Scan(&p.ID, &p.UserID, &p.EventID, &p.NamaEvent, &p.TanggalEvent, &p.Status,
-		&p.TotalHarga, &p.TotalPotongan, &p.TotalBayar, &p.ExpiresAt, &p.PaidAt, &p.CreatedAt)
+		&p.TotalHarga, &p.TotalPotongan, &p.TotalBayar, &p.ExpiresAt, &p.PaidAt, &p.CreatedAt, &p.KodePromo)
 	if errors.Is(err, sql.ErrNoRows) {
 		return p, ErrTidakDitemukan
 	}
@@ -241,8 +278,9 @@ func ambilPesananMilik(ctx context.Context, db *sql.DB, id, userID int64) (Pesan
 func ambilPesananUser(ctx context.Context, db *sql.DB, userID int64) ([]Pesanan, error) {
 	rows, err := db.QueryContext(ctx,
 		`SELECT o.id, o.user_id, o.event_id, e.nama, e.tanggal_event, o.status,
-			o.total_harga, o.total_potongan, o.total_bayar, o.expires_at, o.paid_at, o.created_at
+			o.total_harga, o.total_potongan, o.total_bayar, o.expires_at, o.paid_at, o.created_at, COALESCE(pc.kode, '')
 		FROM orders o JOIN events e ON e.id = o.event_id
+		LEFT JOIN promo_codes pc ON pc.id = o.promo_code_id
 		WHERE o.user_id = ?
 		ORDER BY o.id DESC`, userID)
 	if err != nil {
@@ -254,7 +292,7 @@ func ambilPesananUser(ctx context.Context, db *sql.DB, userID int64) ([]Pesanan,
 	for rows.Next() {
 		var p Pesanan
 		if err := rows.Scan(&p.ID, &p.UserID, &p.EventID, &p.NamaEvent, &p.TanggalEvent, &p.Status,
-			&p.TotalHarga, &p.TotalPotongan, &p.TotalBayar, &p.ExpiresAt, &p.PaidAt, &p.CreatedAt); err != nil {
+			&p.TotalHarga, &p.TotalPotongan, &p.TotalBayar, &p.ExpiresAt, &p.PaidAt, &p.CreatedAt, &p.KodePromo); err != nil {
 			return nil, err
 		}
 		hasil = append(hasil, p)

@@ -13,7 +13,7 @@ func TestBR09PesanMengurangiKuotaDanHeld15Menit(t *testing.T) {
 	userID := buatPembeli(t, db)
 	now := waktuSekarang()
 
-	orderID, err := buatPesanan(context.Background(), db, userID, e.eventID, pesan(e.kategoriID, 2), now)
+	orderID, err := buatPesanan(context.Background(), db, userID, e.eventID, "", pesan(e.kategoriID, 2), now)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -42,7 +42,7 @@ func TestBR08AlokasiBerurutanTersimpanDiDatabase(t *testing.T) {
 	userID := buatPembeli(t, db)
 
 	// contoh PRD: tahap aktif tinggal 1 kuota, pesan 3
-	orderID, err := buatPesanan(context.Background(), db, userID, e.eventID, pesan(e.kategoriID, 3), waktuSekarang())
+	orderID, err := buatPesanan(context.Background(), db, userID, e.eventID, "", pesan(e.kategoriID, 3), waktuSekarang())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -77,7 +77,7 @@ func TestBR06PesananCampurKategori(t *testing.T) {
 		{KategoriID: vip, NamaPemegang: "Budi"},
 		{KategoriID: e.kategoriID, NamaPemegang: "Cici"},
 	}
-	orderID, err := buatPesanan(context.Background(), db, userID, e.eventID, baris, waktuSekarang())
+	orderID, err := buatPesanan(context.Background(), db, userID, e.eventID, "", baris, waktuSekarang())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -114,7 +114,7 @@ func TestPesananDitolakTanpaPerubahan(t *testing.T) {
 	}
 	for _, k := range kasus {
 		t.Run(k.nama, func(t *testing.T) {
-			_, err := buatPesanan(ctx, db, userID, k.eventID, k.baris, waktuSekarang())
+			_, err := buatPesanan(ctx, db, userID, k.eventID, "", k.baris, waktuSekarang())
 			var salah KesalahanInput
 			if !errors.As(err, &salah) {
 				t.Errorf("mau KesalahanInput, dapat %v", err)
@@ -129,7 +129,7 @@ func TestPesananDitolakTanpaPerubahan(t *testing.T) {
 		t.Errorf("ada %d tahap yang kuotanya berubah", n)
 	}
 
-	if _, err := buatPesanan(ctx, db, userID, 999999, pesan(e.kategoriID, 1), waktuSekarang()); !errors.Is(err, ErrTidakDitemukan) {
+	if _, err := buatPesanan(ctx, db, userID, 999999, "", pesan(e.kategoriID, 1), waktuSekarang()); !errors.Is(err, ErrTidakDitemukan) {
 		t.Errorf("event tidak ada: dapat %v", err)
 	}
 }
@@ -141,7 +141,7 @@ func TestPesananHanyaTerlihatOlehPemiliknya(t *testing.T) {
 	pemilik := buatPembeli(t, db)
 	orangLain := buatPembeli(t, db)
 
-	orderID, err := buatPesanan(ctx, db, pemilik, e.eventID, pesan(e.kategoriID, 1), waktuSekarang())
+	orderID, err := buatPesanan(ctx, db, pemilik, e.eventID, "", pesan(e.kategoriID, 1), waktuSekarang())
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -13,7 +13,7 @@ import (
 // pesanSatu membuat pesanan n tiket pada waktu `now` dan mengembalikan id-nya
 func pesanSatu(t *testing.T, e eventUji, userID int64, n int, now time.Time, db *sql.DB) int64 {
 	t.Helper()
-	id, err := buatPesanan(context.Background(), db, userID, e.eventID, pesan(e.kategoriID, n), now)
+	id, err := buatPesanan(context.Background(), db, userID, e.eventID, "", pesan(e.kategoriID, n), now)
 	if err != nil {
 		t.Fatalf("buat pesanan: %v", err)
 	}
