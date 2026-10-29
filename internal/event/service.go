@@ -234,6 +234,46 @@ func TahapAktif(tahap []Tahap, now time.Time) (Tahap, bool) {
 	return Tahap{}, false
 }
 
+// SisaTersedia menjumlahkan sisa kuota dari tahap yang batas tanggalnya belum lewat,
+// yaitu jumlah tiket kategori ini yang masih bisa dipesan sekarang.
+func SisaTersedia(tahap []Tahap, now time.Time) int {
+	total := 0
+	for _, t := range tahap {
+		if !now.After(t.BatasTanggal) {
+			total += t.SisaKuota
+		}
+	}
+	return total
+}
+
+// ===== Pengembalian kuota (BR-10, BR-19) =====
+
+// TahapTujuanPengembalian menentukan ke tahap mana 1 kuota tiket dikembalikan
+// (keputusan BR-10/BR-19, lihat PRD §9):
+//   - tahap asal masih berlaku (batas tanggal belum lewat) -> kembali ke tahap asal
+//   - tahap asal sudah lewat -> pindah ke tahap berikutnya (urutan lebih besar) yang masih berlaku,
+//     supaya kursinya tetap bisa dijual
+//   - semua tahap berikutnya juga sudah lewat -> kembali ke tahap asal
+func TahapTujuanPengembalian(tahap []Tahap, asalID int64, now time.Time) int64 {
+	var asal Tahap
+	ketemu := false
+	for _, t := range tahap {
+		if t.ID == asalID {
+			asal, ketemu = t, true
+		}
+	}
+	if !ketemu || !now.After(asal.BatasTanggal) {
+		return asalID
+	}
+
+	for _, t := range urutkanTahap(tahap) {
+		if t.Urutan > asal.Urutan && !now.After(t.BatasTanggal) {
+			return t.ID
+		}
+	}
+	return asalID
+}
+
 // TahapTerlihat mengembalikan tahap yang perlu ditampilkan, yaitu yang kuotanya lebih dari 0.
 // Tahap bisa berkuota 0 setelah kuotanya dipindahkan ke tahap berikutnya (lihat KembalikanKuota).
 func TahapTerlihat(tahap []Tahap) []Tahap {
