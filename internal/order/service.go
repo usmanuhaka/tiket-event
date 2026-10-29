@@ -11,6 +11,7 @@ import (
 	"unicode/utf8"
 
 	"github.com/usmanuhaka/tiket-event/internal/event"
+	"github.com/usmanuhaka/tiket-event/internal/promo"
 )
 
 // Status pesanan, sama dengan ENUM kolom orders.status
@@ -115,6 +116,26 @@ func AlokasiTiket(tahap []event.Tahap, jumlah int, now time.Time) ([]Alokasi, er
 		return nil, salahInput("Kuota tidak cukup: tersisa %d tiket, diminta %d", jumlah-kurang, jumlah)
 	}
 	return hasil, nil
+}
+
+// PotonganPesanan (BR-14) menghitung potongan setiap tiket dalam pesanan:
+// tiket dari kategori yang terdaftar di promo mendapat potongan (dibulatkan ke bawah),
+// tiket kategori lain potongannya 0. Jika tidak ada satu pun tiket yang mendapat potongan,
+// kode ditolak, supaya pemakaian promo tidak terbuang percuma.
+// tiket[i] adalah hasil alokasi harga untuk baris[i].
+func PotonganPesanan(baris []BarisTiket, tiket []Alokasi, p promo.Promo) ([]int64, error) {
+	potongan := make([]int64, len(baris))
+	adaYangBerlaku := false
+	for i, b := range baris {
+		if p.BerlakuUntuk(b.KategoriID) {
+			potongan[i] = promo.HitungPotongan(tiket[i].Harga, p.Persen)
+			adaYangBerlaku = true
+		}
+	}
+	if !adaYangBerlaku {
+		return nil, salahInput("Kode promo %s tidak berlaku untuk tiket yang dipilih", p.Kode)
+	}
+	return potongan, nil
 }
 
 // BatasBayar (BR-09) adalah waktu terakhir pesanan boleh dibayar

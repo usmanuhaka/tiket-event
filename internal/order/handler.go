@@ -165,7 +165,7 @@ func pesanHandler(db *sql.DB, tpl halaman) http.HandlerFunc {
 		if err == nil {
 			// kuota dikurangi dan pesanan HELD dibuat di dalam satu transaksi
 			var orderID int64
-			orderID, err = buatPesanan(r.Context(), db, u.ID, id, baris, time.Now())
+			orderID, err = buatPesanan(r.Context(), db, u.ID, id, "", baris, time.Now())
 			if err == nil {
 				http.Redirect(w, r, fmt.Sprintf("/pesanan/%d", orderID), http.StatusSeeOther)
 				return
