@@ -388,6 +388,8 @@ func tampilDetail(w http.ResponseWriter, r *http.Request, db *sql.DB, tpl halama
 		}
 		// BR-05: tahap yang harganya berlaku saat ini
 		kt.Aktif, kt.AdaAktif = TahapAktif(k.Tahap, now)
+		// tahap berkuota 0 (kuotanya sudah dipindah) tidak ditampilkan
+		kt.Tahap = TahapTerlihat(k.Tahap)
 
 		data.Kategori = append(data.Kategori, kt)
 		data.TotalKuotaKategori += k.Kuota
