@@ -37,20 +37,22 @@ type Pesanan struct {
 
 // Tiket adalah satu baris tabel tickets untuk ditampilkan
 type Tiket struct {
-	ID           int64
-	NamaKategori string
-	NamaTahap    string
-	NamaPemegang string
-	Harga        int64
-	Potongan     int64
-	HargaBayar   int64
-	KodeTiket    string // kosong selama HELD
-	Status       string
-	Refund       int64 // jumlah refund jika tiket REFUNDED (BR-18, BR-20)
-	PersenRefund int   // 75 atau 100; 0 jika belum di-refund
+	ID            int64
+	NamaKategori  string
+	NamaTahap     string
+	NamaPemegang  string
+	Harga         int64
+	Potongan      int64
+	HargaBayar    int64
+	KodeTiket     string // kosong selama HELD
+	Status        string
+	SudahDipindah bool  // BR-21: sudah pernah dipindahkan
+	Refund        int64 // jumlah refund jika tiket REFUNDED (BR-18, BR-20)
+	PersenRefund  int   // 75 atau 100; 0 jika belum di-refund
 
 	// diisi handler untuk tampilan
 	BisaBatal      bool  // ACTIVE, event OPEN, dan belum lewat H-7 (BR-17)
+	BisaPindah     bool  // memenuhi syarat BR-21 dan BR-23
 	EstimasiRefund int64 // refund jika dibatalkan sekarang (75% dari harga bayar)
 }
 
@@ -259,7 +261,7 @@ func ambilPesananMilik(ctx context.Context, db *sql.DB, id, userID int64) (Pesan
 
 	rows, err := db.QueryContext(ctx,
 		`SELECT t.id, c.nama, pt.nama, t.nama_pemegang, t.harga, t.potongan, t.harga_bayar,
-			COALESCE(t.kode_tiket, ''), t.status, COALESCE(r.jumlah, 0), COALESCE(r.persen, 0)
+			COALESCE(t.kode_tiket, ''), t.status, t.sudah_dipindah, COALESCE(r.jumlah, 0), COALESCE(r.persen, 0)
 		FROM tickets t
 		JOIN ticket_categories c ON c.id = t.category_id
 		JOIN price_tiers pt ON pt.id = t.price_tier_id
@@ -274,7 +276,7 @@ func ambilPesananMilik(ctx context.Context, db *sql.DB, id, userID int64) (Pesan
 	for rows.Next() {
 		var t Tiket
 		if err := rows.Scan(&t.ID, &t.NamaKategori, &t.NamaTahap, &t.NamaPemegang,
-			&t.Harga, &t.Potongan, &t.HargaBayar, &t.KodeTiket, &t.Status, &t.Refund, &t.PersenRefund); err != nil {
+			&t.Harga, &t.Potongan, &t.HargaBayar, &t.KodeTiket, &t.Status, &t.SudahDipindah, &t.Refund, &t.PersenRefund); err != nil {
 			return p, err
 		}
 		p.Tiket = append(p.Tiket, t)
