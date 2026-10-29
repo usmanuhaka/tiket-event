@@ -234,6 +234,18 @@ func TahapAktif(tahap []Tahap, now time.Time) (Tahap, bool) {
 	return Tahap{}, false
 }
 
+// TahapTerlihat mengembalikan tahap yang perlu ditampilkan, yaitu yang kuotanya lebih dari 0.
+// Tahap bisa berkuota 0 setelah kuotanya dipindahkan ke tahap berikutnya (lihat KembalikanKuota).
+func TahapTerlihat(tahap []Tahap) []Tahap {
+	var hasil []Tahap
+	for _, t := range tahap {
+		if t.Kuota > 0 {
+			hasil = append(hasil, t)
+		}
+	}
+	return hasil
+}
+
 // urutkanTahap mengembalikan salinan tahap yang diurutkan berdasarkan kolom urutan
 // (slice asli tidak diubah)
 func urutkanTahap(tahap []Tahap) []Tahap {
