@@ -13,6 +13,7 @@ import (
 	_ "github.com/go-sql-driver/mysql"
 	"github.com/joho/godotenv"
 
+	"github.com/usmanuhaka/tiket-event/internal/auth"
 	"github.com/usmanuhaka/tiket-event/internal/web"
 )
 
@@ -45,12 +46,18 @@ func main() {
 	// "/{$}" hanya cocok dengan "/" persis; alamat lain yang tidak terdaftar mendapat 404
 	mux.HandleFunc("GET /{$}", homeHandler(tplHome))
 
+	// login, daftar, logout
+	auth.RegisterRoutes(mux, db)
+
+	// MuatPengguna membungkus semua route: setiap request dicek cookie sesinya dulu
+	app := auth.MuatPengguna(db, mux)
+
 	log.Println("server berjalan di http://localhost:8080")
-	log.Fatal(http.ListenAndServe(":8080", mux))
+	log.Fatal(http.ListenAndServe(":8080", app))
 }
 
 func homeHandler(tpl *template.Template) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		web.Render(w, tpl, nil)
+		web.Render(w, tpl, auth.Halaman(r))
 	}
 }

@@ -43,16 +43,40 @@ func ParseHalaman(file string) *template.Template {
 	))
 }
 
-// Render menampilkan halaman lewat template "layout".
+// Halaman berisi data yang dibutuhkan layout (header, sidebar, kotak pesan) di setiap halaman.
+// Data tiap halaman menyertakan struct ini (embedding), sehingga di template
+// cukup ditulis {{.Nama}} atau {{.Peran}}.
+type Halaman struct {
+	Nama  string // nama pengguna yang login, kosong jika tamu
+	Peran string // ADMIN, PEMBELI, PETUGAS, atau kosong jika tamu
+	Pesan string // pesan berhasil (kotak hijau)
+	Error string // pesan gagal (kotak merah)
+}
+
+// DataPesan dipakai templates/pesan.html untuk halaman pemberitahuan sederhana (mis. 403)
+type DataPesan struct {
+	Halaman
+	Judul string
+	Isi   string
+}
+
+// Render menampilkan halaman lewat template "layout" dengan status 200 OK.
+func Render(w http.ResponseWriter, tpl *template.Template, data any) {
+	RenderStatus(w, tpl, data, http.StatusOK)
+}
+
+// RenderStatus sama seperti Render, tetapi dengan kode status tertentu
+// (mis. 400 jika isi form salah, 401 jika login gagal, 403 jika tidak punya akses).
 // Hasil ditulis ke buffer dulu: jika template gagal di tengah jalan,
 // pengguna mendapat pesan error yang utuh, bukan halaman setengah jadi.
 // Error tidak mematikan server (berbeda dengan log.Fatal).
-func Render(w http.ResponseWriter, tpl *template.Template, data any) {
+func RenderStatus(w http.ResponseWriter, tpl *template.Template, data any, status int) {
 	var buf bytes.Buffer
 	if err := tpl.ExecuteTemplate(&buf, "layout", data); err != nil {
 		log.Printf("gagal render template: %v", err)
 		http.Error(w, "Terjadi kesalahan saat menampilkan halaman", http.StatusInternalServerError)
 		return
 	}
+	w.WriteHeader(status)
 	buf.WriteTo(w)
 }
