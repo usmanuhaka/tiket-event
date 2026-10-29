@@ -51,6 +51,6 @@ func main() {
 
 func homeHandler(tpl *template.Template) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		web.Render(w, tpl, nil)
+		web.Render(w, tpl, web.Halaman{})
 	}
 }

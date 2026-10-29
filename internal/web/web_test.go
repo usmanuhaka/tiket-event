@@ -26,6 +26,20 @@ func TestRupiah(t *testing.T) {
 	}
 }
 
+func TestRenderStatus(t *testing.T) {
+	tpl := template.Must(template.New("layout").Parse(`{{define "layout"}}{{.Error}}{{end}}`))
+
+	w := httptest.NewRecorder()
+	RenderStatus(w, tpl, Halaman{Error: "Email atau password salah"}, http.StatusUnauthorized)
+
+	if w.Code != http.StatusUnauthorized {
+		t.Errorf("status = %d, mau %d", w.Code, http.StatusUnauthorized)
+	}
+	if w.Body.String() != "Email atau password salah" {
+		t.Errorf("isi = %q", w.Body.String())
+	}
+}
+
 func TestRenderGagalBalas500(t *testing.T) {
 	// template "layout" memanggil field yang tidak ada, jadi eksekusi gagal
 	tpl := template.Must(template.New("layout").Parse(`{{define "layout"}}{{.TidakAda}}{{end}}`))

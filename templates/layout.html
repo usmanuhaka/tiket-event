@@ -52,6 +52,20 @@
                 line-height: 61px;
                 color: #a0aec0;
             }
+            /* nama pengguna + tombol logout di kanan header */
+            header .user {
+                float: right;
+                font-size: 14px;
+                line-height: 61px;
+                color: #e2e8f0;
+            }
+            header .user form {
+                display: inline;
+                margin-left: 10px;
+            }
+            header .user a {
+                color: #ffffff;
+            }
 
             /* ===== Sidebar ===== */
             aside {
@@ -246,6 +260,25 @@
                 line-height: 34px;
             }
 
+            /* ===== Kotak pesan: <div class="alert alert-sukses"> / <div class="alert alert-error"> ===== */
+            .alert {
+                margin-bottom: 16px;
+                padding: 10px 14px;
+                border: 1px solid;
+                border-radius: 4px;
+                font-size: 14px;
+            }
+            .alert-sukses {
+                background-color: #eef8f0;
+                border-color: #b7dfc0;
+                color: #22673a;
+            }
+            .alert-error {
+                background-color: #fdf0ef;
+                border-color: #e3b5b0;
+                color: #a5281b;
+            }
+
             /* ===== Footer ===== */
             footer {
                 clear: both;
@@ -261,9 +294,13 @@
     </head>
 
     <body>
-        <header>{{template "header" }}</header>
-        <aside>{{template "sidebar"}}</aside>
-        <main>{{template "content" .}}</main>
+        <header>{{template "header" .}}</header>
+        <aside>{{template "sidebar" .}}</aside>
+        <main>
+            {{if .Pesan}}<div class="alert alert-sukses">{{.Pesan}}</div>{{end}}
+            {{if .Error}}<div class="alert alert-error">{{.Error}}</div>{{end}}
+            {{template "content" .}}
+        </main>
         <footer>{{template "footer"}}</footer>
     </body>
 </html>

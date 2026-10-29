@@ -2,5 +2,9 @@
     <p class="menu-title">Menu</p>
     <ul>
         <li><a href="/">Beranda</a></li>
+        {{if not .Nama}}
+            <li><a href="/login">Login</a></li>
+            <li><a href="/daftar">Daftar</a></li>
+        {{end}}
     </ul>
 {{end}}
