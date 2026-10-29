@@ -22,6 +22,7 @@ const (
 	tiketActive      = "ACTIVE"
 	tiketCancelled   = "CANCELLED"
 	tiketRefunded    = "REFUNDED"
+	tiketUsed        = "USED"
 )
 
 // HasilBatal adalah hasil pembatalan satu tiket oleh pembeli
