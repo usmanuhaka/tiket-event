@@ -96,3 +96,23 @@ Login cukup sederhana (email + password, password di-hash dengan bcrypt), dan pe
 ## 9. Asumsi yang saya ambil (soal tidak menyebutkan)
 BR-04, BR-08, BR-10 (kuota kembali ke tahap asal), BR-15, BR-18 (dihitung dari harga setelah promo), BR-22, BR-23.
 Siapkan alasan untuk tiap asumsi ini saat presentasi, atau sesuaikan jika dosen punya ketentuan lain.
+
+### Keputusan: kuota kembali ke tahap yang batas tanggalnya sudah lewat (BR-10, BR-19)
+**Masalah.** Kuota dari pesanan yang `EXPIRED` (BR-10) atau tiket yang dibatalkan pembeli (BR-19)
+dikembalikan "ke tahap asal". Jika batas tanggal tahap asal sudah lewat, tahap itu tidak akan aktif lagi
+(BR-05), sehingga kursinya tidak bisa dijual ke siapa pun.
+
+**Keputusan (Opsi B).** Saat 1 kuota dikembalikan:
+1. Jika tahap asal masih berlaku (batas tanggal belum lewat), kuota kembali ke tahap asal: `sisa_kuota + 1`.
+2. Jika tahap asal sudah lewat, 1 kuota **dipindahkan** ke tahap berikutnya (urutan lebih besar)
+   yang masih berlaku: tahap asal `kuota − 1`, tahap tujuan `kuota + 1` dan `sisa_kuota + 1`.
+   Jumlah kuota tahap tetap sama dengan kuota kategori (BR-04 tetap benar), dan kursinya bisa dijual lagi
+   dengan harga tahap tujuan.
+3. Jika semua tahap sesudahnya juga sudah lewat, kuota kembali ke tahap asal.
+
+Tahap yang kuotanya menjadi 0 karena pemindahan ini disembunyikan di tampilan.
+Kolom `tickets.price_tier_id` tidak berubah, karena mencatat harga yang dulu dibayar.
+Aturan ini ada di satu fungsi bersama (`event.KembalikanKuota`), dipakai pesanan kedaluwarsa dan pembatalan tiket.
+
+**Opsi yang tidak dipilih (Opsi A).** Selalu kembali ke tahap asal, sesuai teks BR-10 apa adanya.
+Lebih sederhana, tetapi kursi dari tahap yang sudah lewat menjadi hangus.
