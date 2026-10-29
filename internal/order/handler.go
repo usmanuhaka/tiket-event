@@ -51,7 +51,8 @@ type dataEvent struct {
 	web.Halaman
 	Event    event.Event
 	Kategori []kategoriPilihan
-	Isian    []isianBaris // selalu 4 baris (BR-06: maksimal 4 tiket)
+	Isian     []isianBaris // selalu 4 baris (BR-06: maksimal 4 tiket)
+	KodePromo string       // isian kode promo, supaya tetap terisi jika form gagal
 }
 
 // dataPesananList adalah data untuk templates/order/list.html
