@@ -4,8 +4,11 @@ package ticket
 
 import (
 	"fmt"
+	"strings"
 	"time"
+	"unicode/utf8"
 
+	"github.com/usmanuhaka/tiket-event/internal/event"
 	"github.com/usmanuhaka/tiket-event/internal/web"
 )
 
@@ -60,4 +63,46 @@ func BolehBatal(tanggalEvent, now time.Time) bool {
 // Pembagian bilangan bulat membulatkan ke bawah.
 func HitungRefund(hargaBayar int64, persen int) int64 {
 	return hargaBayar * int64(persen) / 100
+}
+
+// ===== Pemindahan tiket (BR-21 s.d. BR-23) =====
+
+// ValidasiNamaBaru memeriksa nama pemegang baru: wajib diisi, maksimal 100 karakter,
+// dan harus berbeda dari nama sekarang (pemindahan berarti ganti pemegang)
+func ValidasiNamaBaru(namaLama, namaBaru string) error {
+	baru := strings.TrimSpace(namaBaru)
+	if baru == "" {
+		return salahInput("Nama pemegang baru wajib diisi")
+	}
+	if utf8.RuneCountInString(baru) > 100 {
+		return salahInput("Nama pemegang baru maksimal 100 karakter")
+	}
+	if strings.EqualFold(baru, strings.TrimSpace(namaLama)) {
+		return salahInput("Nama pemegang baru sama dengan nama sekarang")
+	}
+	return nil
+}
+
+// CekBolehPindah memeriksa syarat pemindahan tiket:
+//   - BR-21: tiket hanya bisa dipindahkan satu kali
+//   - BR-23: tiket ACTIVE (belum dipakai masuk), event OPEN, dan event belum dimulai
+func CekBolehPindah(statusTiket string, sudahDipindah bool, statusEvent string, tanggalEvent, now time.Time) error {
+	if sudahDipindah {
+		return salahInput("Tiket hanya bisa dipindahkan satu kali, dan tiket ini sudah pernah dipindahkan")
+	}
+	switch statusTiket {
+	case tiketActive:
+		// boleh, lanjut cek event
+	case tiketUsed:
+		return salahInput("Tiket sudah dipakai masuk, tidak bisa dipindahkan")
+	default:
+		return salahInput("Tiket tidak aktif (status %s), tidak bisa dipindahkan", statusTiket)
+	}
+	if statusEvent != event.StatusOpen {
+		return salahInput("Event tidak sedang dibuka (status %s), tiket tidak bisa dipindahkan", statusEvent)
+	}
+	if !tanggalEvent.After(now) {
+		return salahInput("Event sudah dimulai, tiket tidak bisa dipindahkan")
+	}
+	return nil
 }
