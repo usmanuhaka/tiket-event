@@ -1,0 +1,13 @@
+# rahasia: salin .env.example menjadi .env, jangan di-commit
+.env
+
+# hasil build
+*.exe
+/web
+/bin/
+
+# hasil test
+coverage.out
+
+# pengaturan lokal Claude Code
+.claude/settings.local.json

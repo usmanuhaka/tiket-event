@@ -1,0 +1,60 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+    branches: [main]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+
+    # MySQL 8 sementara untuk test integrasi
+    services:
+      mysql:
+        image: mysql:8.0
+        env:
+          MYSQL_ROOT_PASSWORD: root
+          MYSQL_DATABASE: tiket_event_test
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="mysqladmin ping -h 127.0.0.1 -uroot -proot"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=10
+
+    env:
+      TEST_DB_DSN: root:root@tcp(127.0.0.1:3306)/tiket_event_test?parseTime=true&loc=Asia%2FJakarta&time_zone=%27%2B07%3A00%27
+
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-go@v6
+        with:
+          go-version-file: go.mod
+
+      - name: Cek format (gofmt)
+        run: |
+          unformatted=$(gofmt -l .)
+          if [ -n "$unformatted" ]; then
+            echo "File berikut belum di-gofmt:"
+            echo "$unformatted"
+            exit 1
+          fi
+
+      - name: go vet
+        run: go vet ./...
+
+      - name: Jalankan migrasi
+        run: |
+          for f in migrations/*.sql; do
+            [ -e "$f" ] || continue
+            echo "migrasi $f"
+            mysql -h 127.0.0.1 -uroot -proot --default-character-set=utf8mb4 tiket_event_test < "$f"
+          done
+
+      # -p 1: paket dites satu per satu karena memakai database test yang sama
+      # -race: mendeteksi akses data bersamaan yang tidak aman
+      - name: go test
+        run: go test -p 1 -race ./...
