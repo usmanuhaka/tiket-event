@@ -34,6 +34,7 @@ Spesifikasi lengkap ada di [docs/PRD.md](docs/PRD.md).
 | `006_tiers_kuota_nol.sql` | mengizinkan kuota tahap 0 (hasil pemindahan kuota, lihat PRD §9) |
 | `007_promo.sql` | tabel `promo_codes`, `promo_categories`, dan kolom `orders.promo_code_id` |
 | `008_refunds.sql` | tabel `refunds` (pengembalian dana per tiket) |
+| `009_transfers.sql` | kolom `tickets.sudah_dipindah` dan tabel `ticket_transfers` (kode lama/baru) |
 
 Karena tanggal di `004` dihitung dengan `DATE_ADD(NOW(), ...)`, menjalankan ulang file itu tidak menggeser tanggal
 event yang sudah ada (`INSERT IGNORE` melewatinya). Untuk data baru, hapus dulu event contoh lewat phpMyAdmin.
@@ -72,6 +73,13 @@ Login sebagai admin, lalu buka menu **Kelola Event**:
 - **Admin** membuka detail event `OPEN` yang belum dimulai lalu klik **Batalkan Event**.
   Semua tiket `ACTIVE` di-refund **100%**, pesanan yang belum dibayar dibatalkan, dan penjualan ditutup.
 - Pemakaian promo tidak dikembalikan pada kedua jenis pembatalan. Keputusan lengkap ada di `docs/PRD.md` §9.
+
+## Pemindahan tiket
+- Di detail pesanan, klik **Pindahkan** pada tiket, isi nama pemegang baru, lalu simpan.
+- Hanya pemilik pesanan yang bisa memindahkan, hanya **satu kali** per tiket, untuk tiket `ACTIVE`
+  yang belum dipakai masuk, selama event masih `OPEN` dan belum dimulai.
+- Tiket mendapat **kode baru**; kode lama langsung tidak berlaku tetapi tetap dicatat di `ticket_transfers`.
+- Tiket yang sudah dipindahkan tidak bisa dibatalkan pembeli (tetap di-refund 100% jika event dibatalkan).
 
 ## Akun demo
 Dibuat oleh `migrations/002_data_contoh_users.sql`.
