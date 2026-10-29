@@ -27,7 +27,9 @@ Yang **tidak boleh ditiru** dari contoh dosen (itu penyederhanaan untuk kelas):
 
 ## Stack
 - Go, ikuti versi Go di materi dosen. Standard library `net/http` dan `html/template`. Tanpa framework.
-- MySQL 8 lewat Docker Compose (contoh: `Pertemuan CRUD/docker-compose.yml`), driver `github.com/go-sql-driver/mysql`, query manual pakai `database/sql`, tanpa ORM.
+- Database lokal: MariaDB 10.4 dari XAMPP (`127.0.0.1:3306`, user `root` tanpa password, database `tiket_event` dan `tiket_event_test`). CI memakai MySQL 8. Tidak memakai Docker.
+- Driver `github.com/go-sql-driver/mysql`, query manual pakai `database/sql`, tanpa ORM.
+- SQL harus jalan di **MariaDB 10.4 dan MySQL 8**: pakai fitur standar saja (tanpa kolom JSON, CTE rekursif, window function, `RETURNING`, atau `DEFAULT (ekspresi)`).
 - `github.com/joho/godotenv` untuk membaca `.env` (sama seperti dosen).
 - Satu-satunya library tambahan yang boleh: `golang.org/x/crypto/bcrypt` untuk hash password. Library lain **tanya dulu**.
 - Migrasi berupa file `.sql` bernomor di `migrations/`, dijalankan manual seperti `database.sql` milik dosen.
@@ -43,21 +45,24 @@ internal/
   checkin/          pemeriksaan tiket di pintu
   report/           laporan penjualan & pendapatan
   auth/             login dan peran
+  web/              helper tampilan bersama (parseHalaman, rupiah, render)
 templates/          layout, header, sidebar, footer, + folder per fitur
 migrations/         skema & data contoh SQL
 docs/PRD.md         spesifikasi
-docker-compose.yml  MySQL lokal
+.github/workflows/  CI (gofmt, vet, test dengan MySQL 8)
 .env.example        contoh konfigurasi (tanpa rahasia)
 ```
 Di tiap paket: `handler.go` (HTTP, gaya closure), `query.go` (fungsi SQL), `service.go` (aturan bisnis murni Go, tanpa HTTP, supaya mudah dites), dan `*_test.go`.
 Tetap sederhana: jika satu fitur kecil, boleh digabung dalam lebih sedikit file.
 
 ## Perintah
-- Nyalakan DB: `docker compose up -d`
-- Jalankan: `go run ./cmd/web` (default `:8080`)
-- Test: `go test ./...`
+- Nyalakan DB: buka XAMPP Control Panel, klik **Start** pada MySQL
+- Jalankan: `go run ./cmd/web` (default `:8080`, dari root proyek)
+- Test: `go test ./...` (test DB di-skip jika `TEST_DB_DSN` kosong; CI memakai `go test -p 1 -race ./...`)
 - Cek: `go vet ./...` dan `gofmt -l .` (harus kosong)
-- Migrasi: jalankan file di `migrations/` berurutan
+- Migrasi: jalankan file di `migrations/` berurutan ke `tiket_event` **dan** `tiket_event_test`, dari root proyek:
+  `C:\xampp\mysql\bin\mysql.exe -uroot --default-character-set=utf8mb4 tiket_event -e "source migrations/001_nama.sql"`
+  (atau impor lewat phpMyAdmin). File migrasi tidak berisi `CREATE DATABASE`/`USE` supaya bisa dipakai ke kedua database.
 
 ## Aturan kerja (wajib)
 1. **Plan dulu.** Untuk setiap fitur, tulis rencana singkat (file yang diubah, tabel, test) lalu tunggu persetujuan saya.
