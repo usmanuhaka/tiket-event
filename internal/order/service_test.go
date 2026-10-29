@@ -42,8 +42,8 @@ func TestValidasiPesanan(t *testing.T) {
 
 // ===== BR-08: alokasi harga berurutan =====
 
-// tahapUji: Presale 1 Rp100rb, Presale 2 Rp125rb, Normal Rp150rb
-func tahapUji(sisa1, sisa2, sisa3 int) []event.Tahap {
+// tigaTahap: Presale 1 Rp100rb, Presale 2 Rp125rb, Normal Rp150rb
+func tigaTahap(sisa1, sisa2, sisa3 int) []event.Tahap {
 	return []event.Tahap{
 		{ID: 1, Nama: "Presale 1", Urutan: 1, Harga: 100000, Kuota: 10, SisaKuota: sisa1, BatasTanggal: sekarang.Add(hari(5))},
 		{ID: 2, Nama: "Presale 2", Urutan: 2, Harga: 125000, Kuota: 10, SisaKuota: sisa2, BatasTanggal: sekarang.Add(hari(10))},
@@ -80,16 +80,16 @@ func TestAlokasiTiket(t *testing.T) {
 		now    time.Time
 		mau    []int64 // nil berarti ditolak
 	}{
-		{"semua dari tahap 1", tahapUji(10, 10, 10), 3, sekarang, []int64{1, 1, 1}},
-		{"contoh PRD: tahap aktif sisa 1, pesan 3", tahapUji(1, 10, 10), 3, sekarang, []int64{1, 2, 2}},
-		{"melintasi tiga tahap", tahapUji(1, 1, 10), 4, sekarang, []int64{1, 2, 3, 3}},
-		{"tahap 1 habis, mulai dari tahap 2", tahapUji(0, 10, 10), 2, sekarang, []int64{2, 2}},
-		{"tahap 1 masih ada sisa tapi tanggal lewat", tahapUji(10, 10, 10), 2, sekarang.Add(hari(6)), []int64{2, 2}},
-		{"kuota pas habis", tahapUji(1, 1, 2), 4, sekarang, []int64{1, 2, 3, 3}},
-		{"kuota kurang -> ditolak", tahapUji(1, 1, 1), 4, sekarang, nil},
-		{"semua tanggal lewat -> ditolak", tahapUji(10, 10, 10), 1, sekarang.Add(hari(21)), nil},
+		{"semua dari tahap 1", tigaTahap(10, 10, 10), 3, sekarang, []int64{1, 1, 1}},
+		{"contoh PRD: tahap aktif sisa 1, pesan 3", tigaTahap(1, 10, 10), 3, sekarang, []int64{1, 2, 2}},
+		{"melintasi tiga tahap", tigaTahap(1, 1, 10), 4, sekarang, []int64{1, 2, 3, 3}},
+		{"tahap 1 habis, mulai dari tahap 2", tigaTahap(0, 10, 10), 2, sekarang, []int64{2, 2}},
+		{"tahap 1 masih ada sisa tapi tanggal lewat", tigaTahap(10, 10, 10), 2, sekarang.Add(hari(6)), []int64{2, 2}},
+		{"kuota pas habis", tigaTahap(1, 1, 2), 4, sekarang, []int64{1, 2, 3, 3}},
+		{"kuota kurang -> ditolak", tigaTahap(1, 1, 1), 4, sekarang, nil},
+		{"semua tanggal lewat -> ditolak", tigaTahap(10, 10, 10), 1, sekarang.Add(hari(21)), nil},
 		{"input tidak urut tetap mulai dari urutan terkecil", func() []event.Tahap {
-			t := tahapUji(1, 10, 10)
+			t := tigaTahap(1, 10, 10)
 			return []event.Tahap{t[2], t[1], t[0]}
 		}(), 2, sekarang, []int64{1, 2}},
 	}
@@ -113,7 +113,7 @@ func TestAlokasiTiket(t *testing.T) {
 }
 
 func TestAlokasiTiketHargaPerTiket(t *testing.T) {
-	hasil, err := AlokasiTiket(tahapUji(1, 10, 10), 3, sekarang)
+	hasil, err := AlokasiTiket(tigaTahap(1, 10, 10), 3, sekarang)
 	if err != nil {
 		t.Fatal(err)
 	}
