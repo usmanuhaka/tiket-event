@@ -14,6 +14,7 @@ import (
 
 	"github.com/usmanuhaka/tiket-event/internal/auth"
 	"github.com/usmanuhaka/tiket-event/internal/event"
+	"github.com/usmanuhaka/tiket-event/internal/order"
 	"github.com/usmanuhaka/tiket-event/internal/web"
 )
 
@@ -51,6 +52,12 @@ func main() {
 
 	// pengelolaan event, kategori, tahap harga (khusus ADMIN)
 	event.RegisterRoutes(mux, db)
+
+	// katalog event, pemesanan, dan pembayaran (pembeli)
+	order.RegisterRoutes(mux, db)
+
+	// BR-10: worker berjalan di latar belakang (goroutine), memeriksa pesanan kedaluwarsa tiap 1 menit
+	go order.JalankanWorker(context.Background(), db, time.Minute)
 
 	// MuatPengguna membungkus semua route: setiap request dicek cookie sesinya dulu
 	app := auth.MuatPengguna(db, mux)
