@@ -27,7 +27,7 @@ func pesanBersamaan(t *testing.T, db *sql.DB, e eventUji, jumlahOrang, tiketPerO
 		go func() {
 			defer wg.Done()
 			<-mulai
-			_, err := buatPesanan(context.Background(), db, userID, e.eventID, pesan(e.kategoriID, tiketPerOrang), waktuSekarang())
+			_, err := buatPesanan(context.Background(), db, userID, e.eventID, "", pesan(e.kategoriID, tiketPerOrang), waktuSekarang())
 			if err == nil {
 				mu.Lock()
 				berhasil++

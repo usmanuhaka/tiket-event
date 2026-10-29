@@ -9,6 +9,7 @@ import (
 	"github.com/go-sql-driver/mysql"
 
 	"github.com/usmanuhaka/tiket-event/internal/event"
+	"github.com/usmanuhaka/tiket-event/internal/promo"
 )
 
 // ErrWaktuBayarHabis dikembalikan jika pembeli menekan "Konfirmasi Pembayaran" setelah 15 menit
@@ -170,6 +171,7 @@ func expirePesanan(ctx context.Context, db *sql.DB, orderID int64, now time.Time
 
 // kedaluwarsakan mengembalikan kuota setiap tiket HELD lalu mengubah status pesanan menjadi EXPIRED
 // dan tiket menjadi CANCELLED. Dipanggil di dalam transaksi yang sudah mengunci event, pesanan, dan tahap.
+// Jika pesanan memakai promo, baris promo dikunci di sini (paling akhir) untuk mengembalikan pemakaiannya.
 func kedaluwarsakan(ctx context.Context, tx *sql.Tx, orderID int64, now time.Time) error {
 	daftar, err := tiketHeld(ctx, tx, orderID)
 	if err != nil {
@@ -180,6 +182,17 @@ func kedaluwarsakan(ctx context.Context, tx *sql.Tx, orderID int64, now time.Tim
 	// atau dipindah ke tahap berikutnya jika tahap asal sudah lewat (keputusan di PRD §9).
 	for _, t := range daftar {
 		if _, err := event.KembalikanKuota(ctx, tx, t.kategoriID, t.tahapID, now); err != nil {
+			return err
+		}
+	}
+
+	// BR-15: pemakaian promo dikembalikan karena pesanan EXPIRED
+	var promoID sql.NullInt64
+	if err := tx.QueryRowContext(ctx, "SELECT promo_code_id FROM orders WHERE id = ?", orderID).Scan(&promoID); err != nil {
+		return err
+	}
+	if promoID.Valid {
+		if err := promo.KembalikanPemakaian(ctx, tx, promoID.Int64); err != nil {
 			return err
 		}
 	}

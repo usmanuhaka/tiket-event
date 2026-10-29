@@ -195,3 +195,37 @@ func TestBayarTerlambatLewatHTTP(t *testing.T) {
 		t.Errorf("status %s, mau EXPIRED", s)
 	}
 }
+
+// Alur pembeli dengan kode promo: potongan tampil per tiket di detail pesanan
+func TestPesanDenganKodePromoLewatHTTP(t *testing.T) {
+	db := bukaDBKosong(t)
+	e, vip := eventFestivalVIP(t, db)
+	buatPromo(t, db, "VIP15", 15, 10, vip)
+	budi := auth.User{ID: buatPembeli(t, db), Nama: "Budi", Role: auth.PeranPembeli}
+	mux := siapkanMux(t, db)
+	path := fmt.Sprintf("/event/%d/pesan", e.eventID)
+
+	// kode tidak berlaku untuk tiket Festival -> 400, kode tetap terisi di form
+	w := kirim(mux, &budi, "POST", path, url.Values{
+		"kategori_1": {fmt.Sprint(e.kategoriID)}, "nama_1": {"Budi"}, "kode_promo": {"VIP15"},
+	})
+	if w.Code != http.StatusBadRequest || !strings.Contains(w.Body.String(), "tidak berlaku") || !strings.Contains(w.Body.String(), `value="VIP15"`) {
+		t.Errorf("promo tidak berlaku: status %d", w.Code)
+	}
+
+	// 1 Festival + 1 VIP dengan kode (huruf kecil) -> potongan hanya untuk VIP
+	w = kirim(mux, &budi, "POST", path, url.Values{
+		"kategori_1": {fmt.Sprint(e.kategoriID)}, "nama_1": {"Budi"},
+		"kategori_2": {fmt.Sprint(vip)}, "nama_2": {"Ani"},
+		"kode_promo": {"vip15"},
+	})
+	if w.Code != http.StatusSeeOther {
+		t.Fatalf("pesan dengan promo: status %d\n%s", w.Code, w.Body.String())
+	}
+	isi := kirim(mux, &budi, "GET", w.Header().Get("Location"), nil).Body.String()
+	for _, mau := range []string{"VIP15", "-Rp60.000", "Rp340.000", "Rp490.000"} {
+		if !strings.Contains(isi, mau) {
+			t.Errorf("detail pesanan tidak memuat %q", mau)
+		}
+	}
+}

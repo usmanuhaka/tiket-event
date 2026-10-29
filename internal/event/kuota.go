@@ -14,8 +14,11 @@ import (
 //   1. baris event         -> KunciEvent
 //   2. baris pesanan       -> (di paket order, jika ada)
 //   3. baris tahap harga   -> KunciTahapKategori (selalu ORDER BY id)
+//   4. baris promo         -> promo.KunciPromo / promo.KembalikanPemakaian (paling akhir)
 // Karena semua transaksi mengunci dengan urutan yang sama, dua transaksi tidak bisa
 // saling menunggu (deadlock), dan transaksi untuk event yang sama dilayani satu per satu.
+// Promo paling akhir karena satu promo bisa dipakai beberapa event: transaksi yang sedang
+// memegang kunci promo tidak lagi menunggu kunci lain, jadi tidak ada lingkaran saling tunggu.
 
 // KunciEvent mengunci baris event sampai transaksi selesai (SELECT ... FOR UPDATE).
 // Berbeda dengan kunciEventDraft, fungsi ini tidak memeriksa status;
