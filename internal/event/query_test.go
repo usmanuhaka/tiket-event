@@ -11,10 +11,10 @@ import (
 	"github.com/usmanuhaka/tiket-event/internal/testdb"
 )
 
-// bukaDBKosong membuka database test dengan tabel event, kategori, dan tahap kosong
+// bukaDBKosong membuka database test dengan semua tabel kosong
 func bukaDBKosong(t *testing.T) *sql.DB {
 	db := testdb.Buka(t)
-	testdb.Kosongkan(t, db, "price_tiers", "ticket_categories", "events")
+	testdb.KosongkanSemua(t, db)
 	return db
 }
 
