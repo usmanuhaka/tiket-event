@@ -59,7 +59,7 @@ func MuatPengguna(db *sql.DB, next http.Handler) http.Handler {
 		if err == nil {
 			u, err := getUserBySessionToken(r.Context(), db, cookie.Value, time.Now())
 			if err == nil {
-				r = r.WithContext(context.WithValue(r.Context(), kunciPengguna, u))
+				r = DenganPengguna(r, u)
 			} else if !errors.Is(err, sql.ErrNoRows) {
 				log.Printf("cek sesi: %v", err)
 				http.Error(w, "Gagal memeriksa sesi login", http.StatusInternalServerError)
@@ -68,6 +68,12 @@ func MuatPengguna(db *sql.DB, next http.Handler) http.Handler {
 		}
 		next.ServeHTTP(w, r)
 	})
+}
+
+// DenganPengguna menitipkan pengguna di context request.
+// Dipakai MuatPengguna, dan oleh test paket lain untuk meniru pengguna yang sudah login.
+func DenganPengguna(r *http.Request, u User) *http.Request {
+	return r.WithContext(context.WithValue(r.Context(), kunciPengguna, u))
 }
 
 // Wajib membatasi halaman untuk pengguna yang sudah login dengan peran tertentu.
