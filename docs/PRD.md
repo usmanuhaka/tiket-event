@@ -116,3 +116,23 @@ Aturan ini ada di satu fungsi bersama (`event.KembalikanKuota`), dipakai pesanan
 
 **Opsi yang tidak dipilih (Opsi A).** Selalu kembali ke tahap asal, sesuai teks BR-10 apa adanya.
 Lebih sederhana, tetapi kursi dari tahap yang sudah lewat menjadi hangus.
+
+### Keputusan: pembatalan tiket, pembatalan event, dan refund (BR-17 s.d. BR-20)
+1. **Siapa yang boleh membatalkan tiket.** Hanya pembeli pemilik pesanan. Refund dicatat atas nama
+   pemilik pesanan (`refunds.user_id`), bukan atas nama pemegang tiket yang tertulis di tiket.
+2. **Batas H-7 (BR-17) dihitung per tanggal kalender Asia/Jakarta**, jam diabaikan.
+   Pembatalan boleh jika `tanggal hari ini ≤ tanggal event − 7 hari`.
+   Contoh: event 20 Des pukul 19:00 → hari terakhir pembatalan 13 Des (sampai 23:59:59 WIB).
+3. **Besar refund** dihitung dari `harga_bayar` tiket (setelah potongan promo), dibulatkan ke bawah:
+   75% untuk pembatalan oleh pembeli (BR-18), 100% untuk event yang dibatalkan (BR-20).
+4. **Pemakaian promo tidak dikembalikan**, baik pada pembatalan oleh pembeli maupun pembatalan event.
+   Pemakaian promo hanya dikembalikan saat pesanan `EXPIRED` (BR-15).
+5. **Status setelah pembatalan.**
+   - Tiket `ACTIVE` yang dibatalkan pembeli atau terkena pembatalan event menjadi `REFUNDED`
+     (ada baris di tabel `refunds`). Pesanannya tetap `PAID`.
+   - Saat event dibatalkan, pesanan `HELD` menjadi `CANCELLED` dan tiketnya `CANCELLED` (belum dibayar,
+     jadi tanpa refund). Tiket yang sudah `REFUNDED`, `CANCELLED`, atau `USED` tidak diubah.
+6. **Kuota.** Tiket yang dibatalkan pembeli mengembalikan kuota lewat aturan pengembalian di atas (BR-19),
+   jadi bisa dijual lagi. Pembatalan event tidak mengubah kuota karena penjualan ditutup.
+7. **Kapan event boleh dibatalkan.** Hanya event `OPEN` yang belum dimulai (`tanggal_event > sekarang`).
+   Event `DRAFT` cukup dihapus karena belum ada pesanan.
