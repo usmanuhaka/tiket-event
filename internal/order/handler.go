@@ -13,6 +13,7 @@ import (
 
 	"github.com/usmanuhaka/tiket-event/internal/auth"
 	"github.com/usmanuhaka/tiket-event/internal/event"
+	"github.com/usmanuhaka/tiket-event/internal/ticket"
 	"github.com/usmanuhaka/tiket-event/internal/web"
 )
 
@@ -64,8 +65,9 @@ type dataPesananList struct {
 // dataPesanan adalah data untuk templates/order/detail.html
 type dataPesanan struct {
 	web.Halaman
-	Pesanan   Pesanan
-	BisaBayar bool // HELD dan belum lewat 15 menit
+	Pesanan    Pesanan
+	BisaBayar  bool      // HELD dan belum lewat 15 menit
+	BatasBatal time.Time // tanggal terakhir pembatalan tiket (BR-17)
 }
 
 // RegisterRoutes mendaftarkan halaman katalog event, pemesanan, dan pembayaran
@@ -298,6 +300,16 @@ func tampilPesanan(w http.ResponseWriter, r *http.Request, db *sql.DB, tpl halam
 			}
 		} else {
 			data.BisaBayar = true
+		}
+	}
+
+	// tombol "Batalkan" per tiket: hanya tiket ACTIVE, event masih OPEN, dan belum lewat H-7 (BR-17)
+	now := time.Now()
+	data.BatasBatal = ticket.BatasBatal(p.TanggalEvent)
+	for i, t := range data.Pesanan.Tiket {
+		if t.Status == TiketActive && p.StatusEvent == event.StatusOpen && ticket.BolehBatal(p.TanggalEvent, now) {
+			data.Pesanan.Tiket[i].BisaBatal = true
+			data.Pesanan.Tiket[i].EstimasiRefund = ticket.HitungRefund(t.HargaBayar, ticket.PersenRefundPembeli)
 		}
 	}
 	web.RenderStatus(w, tpl.detail, data, status)
