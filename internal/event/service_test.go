@@ -62,6 +62,16 @@ func TestTahapAktif(t *testing.T) {
 	}
 }
 
+func TestTahapTerlihatMenyembunyikanKuotaNol(t *testing.T) {
+	tahap := tigaTahap()
+	tahap[0].Kuota, tahap[0].SisaKuota = 0, 0
+
+	terlihat := TahapTerlihat(tahap)
+	if len(terlihat) != 2 || terlihat[0].ID != 2 || terlihat[1].ID != 3 {
+		t.Errorf("dapat %+v, mau tahap id 2 dan 3", terlihat)
+	}
+}
+
 // ===== BR-02: kuota kategori vs kapasitas =====
 
 func TestCekKuotaKategori(t *testing.T) {

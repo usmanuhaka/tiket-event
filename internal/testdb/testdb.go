@@ -51,6 +51,21 @@ func Kosongkan(t *testing.T, db *sql.DB, tabel ...string) {
 	}
 }
 
+// semuaTabel berisi semua tabel aplikasi, diurutkan dari tabel anak ke tabel induk.
+// Tambahkan tabel baru di sini setiap ada migrasi baru.
+var semuaTabel = []string{
+	"tickets", "orders",
+	"price_tiers", "ticket_categories", "events",
+	"sessions", "users",
+}
+
+// KosongkanSemua menghapus isi semua tabel. Dipakai di awal setiap test integrasi,
+// supaya data sisa test paket lain (yang memakai database test yang sama) tidak mengganggu.
+func KosongkanSemua(t *testing.T, db *sql.DB) {
+	t.Helper()
+	Kosongkan(t, db, semuaTabel...)
+}
+
 // muatEnv membaca .env di root proyek (folder yang berisi go.mod).
 // go test menjalankan test dari folder paket, jadi .env harus dicari ke atas.
 // Variabel yang sudah di-set (mis. di CI) tidak ditimpa oleh godotenv.

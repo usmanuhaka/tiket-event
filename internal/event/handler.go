@@ -163,7 +163,7 @@ func eventEditFormHandler(db *sql.DB, tpl halaman) http.HandlerFunc {
 			return
 		}
 
-		e, err := getEventById(r.Context(), db, id)
+		e, err := GetEventById(r.Context(), db, id)
 		if err != nil {
 			tanggapiError(w, r, db, tpl, id, err)
 			return
@@ -356,7 +356,7 @@ func bukaPenjualanHandler(db *sql.DB, tpl halaman) http.HandlerFunc {
 // tampilDetail merender halaman detail event. Dipakai saat membuka halaman (200)
 // dan saat sebuah aksi ditolak (400) supaya admin melihat pesan di halaman yang sama.
 func tampilDetail(w http.ResponseWriter, r *http.Request, db *sql.DB, tpl halaman, id int64, pesanError string, masalah []string, status int) {
-	e, err := getEventById(r.Context(), db, id)
+	e, err := GetEventById(r.Context(), db, id)
 	if errors.Is(err, ErrTidakDitemukan) {
 		tampilPesan(w, r, tpl, http.StatusNotFound, "Tidak ditemukan", "Event tidak ditemukan atau sudah dihapus.")
 		return
@@ -366,7 +366,7 @@ func tampilDetail(w http.ResponseWriter, r *http.Request, db *sql.DB, tpl halama
 		return
 	}
 
-	kategori, err := ambilKategoriDanTahap(r.Context(), db, id)
+	kategori, err := AmbilKategoriDanTahap(r.Context(), db, id)
 	if err != nil {
 		gagalServer(w, "ambil kategori", err)
 		return
@@ -388,6 +388,8 @@ func tampilDetail(w http.ResponseWriter, r *http.Request, db *sql.DB, tpl halama
 		}
 		// BR-05: tahap yang harganya berlaku saat ini
 		kt.Aktif, kt.AdaAktif = TahapAktif(k.Tahap, now)
+		// tahap berkuota 0 (kuotanya sudah dipindah) tidak ditampilkan
+		kt.Tahap = TahapTerlihat(k.Tahap)
 
 		data.Kategori = append(data.Kategori, kt)
 		data.TotalKuotaKategori += k.Kuota

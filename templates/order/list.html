@@ -1,0 +1,30 @@
+{{define "content"}}
+    <div class="page-head clearfix">
+        <h3 class="float-left">Pesanan Saya</h3>
+        <a href="/event" class="btn float-right">+ Pesan Tiket</a>
+    </div>
+    <table class="table">
+        <thead>
+            <tr>
+                <th width="80px">No Pesanan</th>
+                <th>Event</th>
+                <th>Waktu Pesan</th>
+                <th class="num">Total Bayar</th>
+                <th>Status</th>
+            </tr>
+        </thead>
+        <tbody>
+        {{range .Pesanan}}
+            <tr>
+                <td><a href="/pesanan/{{.ID}}">#{{.ID}}</a></td>
+                <td>{{.NamaEvent}}</td>
+                <td>{{tanggal .CreatedAt}}</td>
+                <td class="num">{{rupiah .TotalBayar}}</td>
+                <td><span class="badge badge-{{.Status}}">{{.Status}}</span></td>
+            </tr>
+        {{else}}
+            <tr><td colspan="5">Belum ada pesanan.</td></tr>
+        {{end}}
+        </tbody>
+    </table>
+{{end}}

@@ -30,6 +30,8 @@ Spesifikasi lengkap ada di [docs/PRD.md](docs/PRD.md).
 | `002_data_contoh_users.sql` | akun demo (lihat di bawah) |
 | `003_events.sql` | tabel `events`, `ticket_categories`, `price_tiers` |
 | `004_data_contoh_events.sql` | 2 event contoh dengan tanggal relatif dari saat file dijalankan: "Konser Akhir Tahun" (OPEN, ±45 hari lagi) dan "Seminar Produksi Musik" (DRAFT, sengaja belum lengkap untuk demo "Buka Penjualan" yang ditolak) |
+| `005_orders.sql` | tabel `orders` dan `tickets` |
+| `006_tiers_kuota_nol.sql` | mengizinkan kuota tahap 0 (hasil pemindahan kuota, lihat PRD §9) |
 
 Karena tanggal di `004` dihitung dengan `DATE_ADD(NOW(), ...)`, menjalankan ulang file itu tidak menggeser tanggal
 event yang sudah ada (`INSERT IGNORE` melewatinya). Untuk data baru, hapus dulu event contoh lewat phpMyAdmin.
@@ -41,6 +43,15 @@ Login sebagai admin, lalu buka menu **Kelola Event**:
    Selama DRAFT, kategori dan tahap bisa dihapus lalu ditambah ulang.
 3. Klik **Buka Penjualan**. Jika ada syarat yang belum terpenuhi, semua masalahnya ditampilkan.
    Setelah `OPEN`, kategori dan tahap terkunci.
+
+## Memesan tiket (Pembeli)
+1. Buka menu **Event**, pilih event, lalu isi 1–4 baris tiket (kategori + nama pemegang) dan klik **Pesan**.
+   Harga per tiket mengikuti tahap aktif; jika sisa tahap kurang, tiket berikutnya memakai harga tahap sesudahnya.
+2. Tiket ditahan **15 menit** (status `HELD`) dan kuota langsung berkurang.
+3. Di halaman pesanan, klik **Konfirmasi Pembayaran** (simulasi). Pesanan menjadi `PAID` dan setiap tiket mendapat kode,
+   mis. `TKT-7K3M9QX2`.
+4. Jika tidak dibayar dalam 15 menit, worker (berjalan tiap 1 menit di dalam server) membuat pesanan `EXPIRED`
+   dan mengembalikan kuotanya. Aturan pengembalian kuota ke tahap yang sudah lewat ada di `docs/PRD.md` §9.
 
 ## Akun demo
 Dibuat oleh `migrations/002_data_contoh_users.sql`.

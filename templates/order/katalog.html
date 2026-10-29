@@ -1,0 +1,29 @@
+{{define "content"}}
+    <div class="page-head clearfix">
+        <h3 class="float-left">Event yang Sedang Dijual</h3>
+    </div>
+    <table class="table">
+        <thead>
+            <tr>
+                <th width="50px">No</th>
+                <th>Nama Event</th>
+                <th>Tanggal</th>
+                <th>Lokasi</th>
+                <th>Aksi</th>
+            </tr>
+        </thead>
+        <tbody>
+        {{range $i, $e := .Event}}
+            <tr>
+                <td>{{add_one $i}}</td>
+                <td>{{$e.Nama}}</td>
+                <td>{{tanggal $e.TanggalEvent}}</td>
+                <td>{{$e.Lokasi}}</td>
+                <td><a href="/event/{{$e.ID}}" class="btn btn-sm">Lihat &amp; Pesan</a></td>
+            </tr>
+        {{else}}
+            <tr><td colspan="5">Belum ada event yang dibuka.</td></tr>
+        {{end}}
+        </tbody>
+    </table>
+{{end}}
