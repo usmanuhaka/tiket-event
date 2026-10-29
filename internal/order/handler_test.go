@@ -268,3 +268,29 @@ func TestDetailPesananMenampilkanBatalDanRefund(t *testing.T) {
 		t.Error("detail pesanan untuk event yang dibatalkan tidak sesuai")
 	}
 }
+
+// Tiket yang sudah dipindahkan: label tampil, tombol Batalkan dan Pindahkan hilang
+func TestDetailPesananTiketDipindahkan(t *testing.T) {
+	db := bukaDBKosong(t)
+	ctx := context.Background()
+	e := siapkanEvent(t, db, []tahapUji{{"Normal", 150000, 10, 20}})
+	budi := auth.User{ID: buatPembeli(t, db), Nama: "Budi", Role: auth.PeranPembeli}
+	mux := siapkanMux(t, db)
+
+	orderID := pesanSatu(t, e, budi.ID, 2, waktuSekarang(), db)
+	if err := bayarPesanan(ctx, db, orderID, budi.ID, waktuSekarang()); err != nil {
+		t.Fatal(err)
+	}
+	detail := fmt.Sprintf("/pesanan/%d", orderID)
+
+	isi := kirim(mux, &budi, "GET", detail, nil).Body.String()
+	if strings.Count(isi, "/pindah\"") != 2 || strings.Count(isi, "/batal\"") != 2 {
+		t.Error("kedua tiket seharusnya punya tombol Pindahkan dan Batalkan")
+	}
+
+	db.Exec("UPDATE tickets SET sudah_dipindah = 1 WHERE order_id = ? ORDER BY id LIMIT 1", orderID)
+	isi = kirim(mux, &budi, "GET", detail, nil).Body.String()
+	if !strings.Contains(isi, "Dipindahkan") || strings.Count(isi, "/pindah\"") != 1 || strings.Count(isi, "/batal\"") != 1 {
+		t.Error("tiket yang dipindahkan masih punya tombol, atau labelnya tidak tampil")
+	}
+}
