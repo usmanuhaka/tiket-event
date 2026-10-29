@@ -30,9 +30,10 @@ func AddOne(n int) int {
 }
 
 var funcs = template.FuncMap{
-	"rupiah":  Rupiah,
-	"add_one": AddOne,
-	"tanggal": Tanggal,
+	"rupiah":       Rupiah,
+	"add_one":      AddOne,
+	"tanggal":      Tanggal,
+	"tanggal_saja": TanggalSaja,
 }
 
 // ParseHalaman memuat layout + header + sidebar + footer + satu file halaman.
@@ -60,8 +61,9 @@ type Halaman struct {
 // DataPesan dipakai templates/pesan.html untuk halaman pemberitahuan sederhana (mis. 403)
 type DataPesan struct {
 	Halaman
-	Judul string
-	Isi   string
+	Judul   string
+	Isi     string
+	Kembali string // alamat tombol "Kembali"; kosong berarti ke beranda
 }
 
 // Render menampilkan halaman lewat template "layout" dengan status 200 OK.

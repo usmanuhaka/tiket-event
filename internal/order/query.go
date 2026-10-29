@@ -23,6 +23,7 @@ type Pesanan struct {
 	EventID       int64
 	NamaEvent     string
 	TanggalEvent  time.Time
+	StatusEvent   string // OPEN, atau CANCELLED jika event dibatalkan (BR-20)
 	Status        string
 	TotalHarga    int64
 	TotalPotongan int64
@@ -45,6 +46,12 @@ type Tiket struct {
 	HargaBayar   int64
 	KodeTiket    string // kosong selama HELD
 	Status       string
+	Refund       int64 // jumlah refund jika tiket REFUNDED (BR-18, BR-20)
+	PersenRefund int   // 75 atau 100; 0 jika belum di-refund
+
+	// diisi handler untuk tampilan
+	BisaBatal      bool  // ACTIVE, event OPEN, dan belum lewat H-7 (BR-17)
+	EstimasiRefund int64 // refund jika dibatalkan sekarang (75% dari harga bayar)
 }
 
 // ===== Buat pesanan (BR-06 s.d. BR-09, BR-12) =====
@@ -236,12 +243,12 @@ func ambilPesananMilik(ctx context.Context, db *sql.DB, id, userID int64) (Pesan
 	var p Pesanan
 
 	err := db.QueryRowContext(ctx,
-		`SELECT o.id, o.user_id, o.event_id, e.nama, e.tanggal_event, o.status,
+		`SELECT o.id, o.user_id, o.event_id, e.nama, e.tanggal_event, e.status, o.status,
 			o.total_harga, o.total_potongan, o.total_bayar, o.expires_at, o.paid_at, o.created_at, COALESCE(pc.kode, '')
 		FROM orders o JOIN events e ON e.id = o.event_id
 		LEFT JOIN promo_codes pc ON pc.id = o.promo_code_id
 		WHERE o.id = ? AND o.user_id = ?`, id, userID,
-	).Scan(&p.ID, &p.UserID, &p.EventID, &p.NamaEvent, &p.TanggalEvent, &p.Status,
+	).Scan(&p.ID, &p.UserID, &p.EventID, &p.NamaEvent, &p.TanggalEvent, &p.StatusEvent, &p.Status,
 		&p.TotalHarga, &p.TotalPotongan, &p.TotalBayar, &p.ExpiresAt, &p.PaidAt, &p.CreatedAt, &p.KodePromo)
 	if errors.Is(err, sql.ErrNoRows) {
 		return p, ErrTidakDitemukan
@@ -252,10 +259,11 @@ func ambilPesananMilik(ctx context.Context, db *sql.DB, id, userID int64) (Pesan
 
 	rows, err := db.QueryContext(ctx,
 		`SELECT t.id, c.nama, pt.nama, t.nama_pemegang, t.harga, t.potongan, t.harga_bayar,
-			COALESCE(t.kode_tiket, ''), t.status
+			COALESCE(t.kode_tiket, ''), t.status, COALESCE(r.jumlah, 0), COALESCE(r.persen, 0)
 		FROM tickets t
 		JOIN ticket_categories c ON c.id = t.category_id
 		JOIN price_tiers pt ON pt.id = t.price_tier_id
+		LEFT JOIN refunds r ON r.ticket_id = t.id
 		WHERE t.order_id = ?
 		ORDER BY t.id`, id)
 	if err != nil {
@@ -266,7 +274,7 @@ func ambilPesananMilik(ctx context.Context, db *sql.DB, id, userID int64) (Pesan
 	for rows.Next() {
 		var t Tiket
 		if err := rows.Scan(&t.ID, &t.NamaKategori, &t.NamaTahap, &t.NamaPemegang,
-			&t.Harga, &t.Potongan, &t.HargaBayar, &t.KodeTiket, &t.Status); err != nil {
+			&t.Harga, &t.Potongan, &t.HargaBayar, &t.KodeTiket, &t.Status, &t.Refund, &t.PersenRefund); err != nil {
 			return p, err
 		}
 		p.Tiket = append(p.Tiket, t)
@@ -277,7 +285,7 @@ func ambilPesananMilik(ctx context.Context, db *sql.DB, id, userID int64) (Pesan
 // ambilPesananUser mengambil semua pesanan seorang pembeli (tanpa daftar tiket), terbaru di atas
 func ambilPesananUser(ctx context.Context, db *sql.DB, userID int64) ([]Pesanan, error) {
 	rows, err := db.QueryContext(ctx,
-		`SELECT o.id, o.user_id, o.event_id, e.nama, e.tanggal_event, o.status,
+		`SELECT o.id, o.user_id, o.event_id, e.nama, e.tanggal_event, e.status, o.status,
 			o.total_harga, o.total_potongan, o.total_bayar, o.expires_at, o.paid_at, o.created_at, COALESCE(pc.kode, '')
 		FROM orders o JOIN events e ON e.id = o.event_id
 		LEFT JOIN promo_codes pc ON pc.id = o.promo_code_id
@@ -291,7 +299,7 @@ func ambilPesananUser(ctx context.Context, db *sql.DB, userID int64) ([]Pesanan,
 	var hasil []Pesanan
 	for rows.Next() {
 		var p Pesanan
-		if err := rows.Scan(&p.ID, &p.UserID, &p.EventID, &p.NamaEvent, &p.TanggalEvent, &p.Status,
+		if err := rows.Scan(&p.ID, &p.UserID, &p.EventID, &p.NamaEvent, &p.TanggalEvent, &p.StatusEvent, &p.Status,
 			&p.TotalHarga, &p.TotalPotongan, &p.TotalBayar, &p.ExpiresAt, &p.PaidAt, &p.CreatedAt, &p.KodePromo); err != nil {
 			return nil, err
 		}

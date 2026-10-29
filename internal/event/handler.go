@@ -58,6 +58,8 @@ type dataDetail struct {
 	TotalKuotaKategori int
 	BisaDiubah         bool     // true selama event masih DRAFT
 	Masalah            []string // alasan "Buka Penjualan" ditolak
+	BisaDibatalkan     bool     // OPEN dan belum dimulai (BR-20)
+	Refund             RingkasanRefund
 }
 
 // RegisterRoutes mendaftarkan semua halaman pengelolaan event. Semuanya khusus ADMIN.
@@ -377,8 +379,18 @@ func tampilDetail(w http.ResponseWriter, r *http.Request, db *sql.DB, tpl halama
 		Event:      e,
 		BisaDiubah: e.Status == StatusDraft,
 		Masalah:    masalah,
+		// BR-20: hanya event OPEN yang belum dimulai yang bisa dibatalkan
+		BisaDibatalkan: e.Status == StatusOpen && e.TanggalEvent.After(time.Now()),
 	}
 	data.Error = pesanError
+
+	if e.Status == StatusCancelled {
+		data.Refund, err = ringkasanRefundEvent(r.Context(), db, id)
+		if err != nil {
+			gagalServer(w, "ringkasan refund", err)
+			return
+		}
+	}
 
 	now := time.Now()
 	for _, k := range kategori {

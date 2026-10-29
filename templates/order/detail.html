@@ -29,6 +29,17 @@
         <p class="form-hint">Pesanan tidak dibayar dalam 15 menit, tiket sudah dilepas kembali.</p>
     {{end}}
 
+    {{if eq .Pesanan.StatusEvent "CANCELLED"}}
+        <div class="alert alert-error">
+            Event ini dibatalkan penyelenggara. Tiket yang sudah dibayar dikembalikan 100%.
+        </div>
+    {{else if eq .Pesanan.Status "PAID"}}
+        <p class="form-hint">
+            Tiket bisa dibatalkan paling lambat <strong>{{tanggal_saja .BatasBatal}}</strong>
+            (7 hari sebelum event) dengan pengembalian dana 75% dari harga yang dibayar.
+        </p>
+    {{end}}
+
     <h4>Tiket</h4>
     <table class="table">
         <thead>
@@ -41,6 +52,8 @@
                 <th class="num">Dibayar</th>
                 <th>Kode Tiket</th>
                 <th>Status</th>
+                <th class="num">Refund</th>
+                <th>Aksi</th>
             </tr>
         </thead>
         <tbody>
@@ -54,6 +67,15 @@
                 <td class="num">{{rupiah .HargaBayar}}</td>
                 <td>{{if .KodeTiket}}<span class="kode">{{.KodeTiket}}</span>{{else}}-{{end}}</td>
                 <td><span class="badge badge-{{.Status}}">{{.Status}}</span></td>
+                <td class="num">{{if .PersenRefund}}{{rupiah .Refund}} ({{.PersenRefund}}%){{else}}-{{end}}</td>
+                <td>
+                    {{if .BisaBatal}}
+                        <form method="POST" action="/tiket/{{.ID}}/batal"
+                            onsubmit="return confirm('Batalkan tiket atas nama {{.NamaPemegang}}? Dana dikembalikan {{rupiah .EstimasiRefund}} (75%).')">
+                            <button class="btn btn-danger btn-sm">Batalkan</button>
+                        </form>
+                    {{end}}
+                </td>
             </tr>
         {{end}}
         </tbody>
