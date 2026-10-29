@@ -1,0 +1,38 @@
+{{define "content"}}
+    <div class="page-head clearfix">
+        <h3 class="float-left">Kelola Promo</h3>
+        <a href="/admin/promo/form" class="btn float-right">+ Tambah Promo</a>
+    </div>
+    <table class="table">
+        <thead>
+            <tr>
+                <th>Kode</th>
+                <th class="num">Potongan</th>
+                <th class="num">Terpakai / Kuota</th>
+                <th>Berlaku untuk</th>
+                <th>Aksi</th>
+            </tr>
+        </thead>
+        <tbody>
+        {{range .Promo}}
+            <tr>
+                <td><span class="kode">{{.Kode}}</span></td>
+                <td class="num">{{.Persen}}%</td>
+                <td class="num">{{.Terpakai}} / {{.KuotaPemakaian}}</td>
+                <td>
+                    {{range .NamaKategori}}{{.}}<br>{{end}}
+                </td>
+                <td>
+                    <form method="POST" action="/admin/promo/{{.ID}}/hapus"
+                        onsubmit="return confirm('Hapus promo ini? Kode tidak bisa dipakai pesanan baru.')">
+                        <button class="btn btn-danger btn-sm">Hapus</button>
+                    </form>
+                </td>
+            </tr>
+        {{else}}
+            <tr><td colspan="5">Belum ada promo.</td></tr>
+        {{end}}
+        </tbody>
+    </table>
+    <p class="form-hint">Terpakai dihitung saat pesanan dibuat dan dikembalikan jika pesanan kedaluwarsa.</p>
+{{end}}

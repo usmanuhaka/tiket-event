@@ -1,0 +1,45 @@
+{{define "content"}}
+    <div class="page-head clearfix">
+        <h3 class="float-left">Tambah Promo</h3>
+        <a href="/admin/promo" class="btn btn-light float-right">&larr; Kembali</a>
+    </div>
+
+    <form class="form" method="post" action="/admin/promo">
+        <div class="form-group">
+            <label for="kode">Kode Promo</label>
+            <input type="text" value="{{.KodeInput}}" id="kode" name="kode" class="form-control" maxlength="30" placeholder="Contoh: HEMAT15" required>
+            <p class="form-hint">3-30 karakter: huruf, angka, atau tanda -. Otomatis diubah ke huruf besar.</p>
+        </div>
+
+        <div class="form-group">
+            <label for="persen">Potongan (%)</label>
+            <input type="number" value="{{.PersenInput}}" id="persen" name="persen" class="form-control" min="1" max="100" step="1" required>
+            <p class="form-hint">Dihitung per tiket dan dibulatkan ke bawah.</p>
+        </div>
+
+        <div class="form-group">
+            <label for="kuota">Kuota Pemakaian</label>
+            <input type="number" value="{{.KuotaInput}}" id="kuota" name="kuota" class="form-control" min="1" step="1" required>
+            <p class="form-hint">Satu pesanan = satu pemakaian, berapa pun jumlah tiketnya.</p>
+        </div>
+
+        <div class="form-group">
+            <label>Berlaku untuk Kategori</label>
+            {{range .Pilihan}}
+                <div>
+                    <label style="font-weight: normal">
+                        <input type="checkbox" name="kategori" value="{{.ID}}" {{if index $.Dipilih .ID}}checked{{end}}>
+                        {{.NamaEvent}} &middot; {{.Nama}}
+                    </label>
+                </div>
+            {{else}}
+                <p class="form-hint">Belum ada kategori. Buat event dan kategorinya dulu.</p>
+            {{end}}
+        </div>
+
+        <div class="form-actions">
+            <button type="submit" class="btn">Simpan</button>
+            <a href="/admin/promo" class="btn btn-light">Batal</a>
+        </div>
+    </form>
+{{end}}

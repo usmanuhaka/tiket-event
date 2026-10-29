@@ -60,6 +60,11 @@
                     </div>
                 </div>
             {{end}}
+            <div class="form-group" style="max-width: 300px">
+                <label for="kode_promo">Kode Promo (opsional)</label>
+                <input type="text" id="kode_promo" name="kode_promo" value="{{.KodePromo}}" class="form-control" maxlength="30">
+                <p class="form-hint">Potongan hanya untuk kategori yang terdaftar di promo.</p>
+            </div>
             <div class="form-actions">
                 <button type="submit" class="btn">Pesan</button>
             </div>

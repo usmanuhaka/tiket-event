@@ -9,7 +9,7 @@
             <tr><th width="200px">Event</th><td>{{.Pesanan.NamaEvent}} &middot; {{tanggal .Pesanan.TanggalEvent}}</td></tr>
             <tr><th>Waktu pesan</th><td>{{tanggal .Pesanan.CreatedAt}}</td></tr>
             <tr><th>Total harga</th><td>{{rupiah .Pesanan.TotalHarga}}</td></tr>
-            <tr><th>Potongan</th><td>{{rupiah .Pesanan.TotalPotongan}}</td></tr>
+            <tr><th>Potongan</th><td>{{rupiah .Pesanan.TotalPotongan}}{{if .Pesanan.KodePromo}} (kode <span class="kode">{{.Pesanan.KodePromo}}</span>){{end}}</td></tr>
             <tr><th>Total bayar</th><td><strong>{{rupiah .Pesanan.TotalBayar}}</strong></td></tr>
             {{if .Pesanan.PaidAt.Valid}}
                 <tr><th>Dibayar</th><td>{{tanggal .Pesanan.PaidAt.Time}}</td></tr>
@@ -37,6 +37,8 @@
                 <th>Kategori</th>
                 <th>Tahap</th>
                 <th class="num">Harga</th>
+                <th class="num">Potongan</th>
+                <th class="num">Dibayar</th>
                 <th>Kode Tiket</th>
                 <th>Status</th>
             </tr>
@@ -47,6 +49,8 @@
                 <td>{{.NamaPemegang}}</td>
                 <td>{{.NamaKategori}}</td>
                 <td>{{.NamaTahap}}</td>
+                <td class="num">{{rupiah .Harga}}</td>
+                <td class="num">{{if .Potongan}}-{{rupiah .Potongan}}{{else}}-{{end}}</td>
                 <td class="num">{{rupiah .HargaBayar}}</td>
                 <td>{{if .KodeTiket}}<span class="kode">{{.KodeTiket}}</span>{{else}}-{{end}}</td>
                 <td><span class="badge badge-{{.Status}}">{{.Status}}</span></td>
