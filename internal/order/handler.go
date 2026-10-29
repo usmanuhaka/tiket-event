@@ -49,8 +49,8 @@ type isianBaris struct {
 // dataEvent adalah data untuk templates/order/event.html
 type dataEvent struct {
 	web.Halaman
-	Event    event.Event
-	Kategori []kategoriPilihan
+	Event     event.Event
+	Kategori  []kategoriPilihan
 	Isian     []isianBaris // selalu 4 baris (BR-06: maksimal 4 tiket)
 	KodePromo string       // isian kode promo, supaya tetap terisi jika form gagal
 }
@@ -112,12 +112,12 @@ func eventHandler(db *sql.DB, tpl halaman) http.HandlerFunc {
 		if !ok {
 			return
 		}
-		tampilEvent(w, r, db, tpl, id, make([]isianBaris, MaksTiket), "", http.StatusOK)
+		tampilEvent(w, r, db, tpl, id, make([]isianBaris, MaksTiket), "", "", http.StatusOK)
 	}
 }
 
 // tampilEvent merender halaman event pembeli: harga tahap aktif tiap kategori dan form pesan
-func tampilEvent(w http.ResponseWriter, r *http.Request, db *sql.DB, tpl halaman, id int64, isian []isianBaris, pesanError string, status int) {
+func tampilEvent(w http.ResponseWriter, r *http.Request, db *sql.DB, tpl halaman, id int64, isian []isianBaris, kodePromo, pesanError string, status int) {
 	now := time.Now()
 
 	e, err := event.GetEventById(r.Context(), db, id)
@@ -137,7 +137,7 @@ func tampilEvent(w http.ResponseWriter, r *http.Request, db *sql.DB, tpl halaman
 		return
 	}
 
-	data := dataEvent{Halaman: auth.Halaman(r), Event: e, Isian: isian}
+	data := dataEvent{Halaman: auth.Halaman(r), Event: e, Isian: isian, KodePromo: kodePromo}
 	data.Error = pesanError
 	for _, k := range kategori {
 		aktif, ada := event.TahapAktif(k.Tahap, now) // BR-05
@@ -163,10 +163,11 @@ func pesanHandler(db *sql.DB, tpl halaman) http.HandlerFunc {
 		u, _ := auth.PenggunaDari(r) // pasti ada karena dibungkus auth.Wajib
 
 		baris, isian, err := bacaFormPesan(r)
+		kodePromo := r.PostFormValue("kode_promo") // boleh kosong (BR-13 s.d. BR-16 dicek di buatPesanan)
 		if err == nil {
 			// kuota dikurangi dan pesanan HELD dibuat di dalam satu transaksi
 			var orderID int64
-			orderID, err = buatPesanan(r.Context(), db, u.ID, id, "", baris, time.Now())
+			orderID, err = buatPesanan(r.Context(), db, u.ID, id, kodePromo, baris, time.Now())
 			if err == nil {
 				http.Redirect(w, r, fmt.Sprintf("/pesanan/%d", orderID), http.StatusSeeOther)
 				return
@@ -176,7 +177,7 @@ func pesanHandler(db *sql.DB, tpl halaman) http.HandlerFunc {
 		var salah KesalahanInput
 		switch {
 		case errors.As(err, &salah):
-			tampilEvent(w, r, db, tpl, id, isian, salah.Pesan, http.StatusBadRequest)
+			tampilEvent(w, r, db, tpl, id, isian, kodePromo, salah.Pesan, http.StatusBadRequest)
 		case errors.Is(err, ErrTidakDitemukan):
 			tampilPesan(w, r, tpl, http.StatusNotFound, "Tidak ditemukan", "Event tidak ditemukan atau tidak sedang dijual.")
 		default:
