@@ -3,7 +3,6 @@
 package order
 
 import (
-	"crypto/rand"
 	"fmt"
 	"sort"
 	"strings"
@@ -147,21 +146,4 @@ func BatasBayar(waktuPesan time.Time) time.Time {
 // Tepat pada detik batas, pesanan masih boleh dibayar.
 func SudahKedaluwarsa(batasBayar, now time.Time) bool {
 	return now.After(batasBayar)
-}
-
-// hurufKode berisi 32 huruf dan angka tanpa 0/O dan 1/I, supaya kode tidak salah baca di pintu masuk
-const hurufKode = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"
-
-// BuatKodeTiket (BR-11) membuat kode tiket acak, mis. "TKT-7K3M9QX2".
-// 8 karakter dari 32 pilihan = sekitar 1 triliun kemungkinan.
-// Keunikan tetap dijaga kolom UNIQUE di database (lihat bayarPesanan).
-func BuatKodeTiket() string {
-	b := make([]byte, 8)
-	rand.Read(b) // crypto/rand: tidak bisa ditebak; sejak Go 1.24 tidak pernah error
-	kode := make([]byte, 8)
-	for i := range b {
-		// 256 habis dibagi 32, jadi setiap huruf punya peluang yang sama
-		kode[i] = hurufKode[int(b[i])%len(hurufKode)]
-	}
-	return "TKT-" + string(kode)
 }
