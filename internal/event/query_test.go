@@ -11,10 +11,10 @@ import (
 	"github.com/usmanuhaka/tiket-event/internal/testdb"
 )
 
-// bukaDBKosong membuka database test dengan tabel event, kategori, dan tahap kosong
+// bukaDBKosong membuka database test dengan semua tabel kosong
 func bukaDBKosong(t *testing.T) *sql.DB {
 	db := testdb.Buka(t)
-	testdb.Kosongkan(t, db, "price_tiers", "ticket_categories", "events")
+	testdb.KosongkanSemua(t, db)
 	return db
 }
 
@@ -59,7 +59,7 @@ func harusTambahTahap(t *testing.T, db *sql.DB, eventID, kategoriID int64, nama 
 
 func statusEvent(t *testing.T, db *sql.DB, id int64) string {
 	t.Helper()
-	e, err := getEventById(context.Background(), db, id)
+	e, err := GetEventById(context.Background(), db, id)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -72,7 +72,7 @@ func TestBR01EventPunyaBeberapaKategori(t *testing.T) {
 	harusTambahKategori(t, db, eventID, "Festival", 400)
 	harusTambahKategori(t, db, eventID, "VIP", 100)
 
-	kategori, err := ambilKategoriDanTahap(context.Background(), db, eventID)
+	kategori, err := AmbilKategoriDanTahap(context.Background(), db, eventID)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -92,7 +92,7 @@ func TestBR02KategoriMelebihiKapasitasDitolak(t *testing.T) {
 		t.Fatalf("mau KesalahanInput, dapat %v", err)
 	}
 
-	kategori, _ := ambilKategoriDanTahap(context.Background(), db, eventID)
+	kategori, _ := AmbilKategoriDanTahap(context.Background(), db, eventID)
 	if len(kategori) != 1 {
 		t.Errorf("kategori yang ditolak tetap tersimpan, jumlah %d", len(kategori))
 	}
@@ -143,7 +143,7 @@ func TestBR02KapasitasTidakBolehDiturunkanDiBawahTotalKategori(t *testing.T) {
 	eventID := buatEventDraft(t, db, 500)
 	harusTambahKategori(t, db, eventID, "Festival", 400)
 
-	e, _ := getEventById(ctx, db, eventID)
+	e, _ := GetEventById(ctx, db, eventID)
 	e.Kapasitas = 399
 	if err := updateEvent(ctx, db, e); err == nil {
 		t.Error("kapasitas 399 diterima padahal total kategori 400")
@@ -170,7 +170,7 @@ func TestBR03UrutanTahapOtomatis(t *testing.T) {
 	}
 	harusTambahTahap(t, db, eventID, kategoriID, "Presale Akhir", 40, 25)
 
-	kategori, err := ambilKategoriDanTahap(ctx, db, eventID)
+	kategori, err := AmbilKategoriDanTahap(ctx, db, eventID)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -252,7 +252,7 @@ func TestEventOpenTidakBisaDiubah(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	e, _ := getEventById(ctx, db, eventID)
+	e, _ := GetEventById(ctx, db, eventID)
 	_, errKategori := tambahKategori(ctx, db, eventID, "VIP", 1)
 	_, errTahap := tambahTahap(ctx, db, eventID, kategoriID, Tahap{Nama: "X", Kuota: 1, BatasTanggal: time.Now()})
 
@@ -299,7 +299,7 @@ func TestDataTidakDitemukan(t *testing.T) {
 	eventLain := buatEventDraft(t, db, 100)
 	kategoriLain := harusTambahKategori(t, db, eventLain, "Milik event lain", 50)
 
-	if _, err := getEventById(ctx, db, 999999); !errors.Is(err, ErrTidakDitemukan) {
+	if _, err := GetEventById(ctx, db, 999999); !errors.Is(err, ErrTidakDitemukan) {
 		t.Errorf("event tidak ada: dapat %v", err)
 	}
 	if _, err := tambahKategori(ctx, db, 999999, "VIP", 1); !errors.Is(err, ErrTidakDitemukan) {

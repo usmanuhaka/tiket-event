@@ -1,0 +1,60 @@
+{{define "content"}}
+    <div class="page-head clearfix">
+        <h3 class="float-left">Pesanan #{{.Pesanan.ID}} <span class="badge badge-{{.Pesanan.Status}}">{{.Pesanan.Status}}</span></h3>
+        <a href="/pesanan" class="btn btn-light float-right">&larr; Pesanan Saya</a>
+    </div>
+
+    <table class="table">
+        <tbody>
+            <tr><th width="200px">Event</th><td>{{.Pesanan.NamaEvent}} &middot; {{tanggal .Pesanan.TanggalEvent}}</td></tr>
+            <tr><th>Waktu pesan</th><td>{{tanggal .Pesanan.CreatedAt}}</td></tr>
+            <tr><th>Total harga</th><td>{{rupiah .Pesanan.TotalHarga}}</td></tr>
+            <tr><th>Potongan</th><td>{{rupiah .Pesanan.TotalPotongan}}</td></tr>
+            <tr><th>Total bayar</th><td><strong>{{rupiah .Pesanan.TotalBayar}}</strong></td></tr>
+            {{if .Pesanan.PaidAt.Valid}}
+                <tr><th>Dibayar</th><td>{{tanggal .Pesanan.PaidAt.Time}}</td></tr>
+            {{end}}
+        </tbody>
+    </table>
+
+    {{if .BisaBayar}}
+        <div class="alert alert-sukses">
+            Tiket ditahan untuk Anda. Selesaikan pembayaran sebelum <strong>{{tanggal .Pesanan.ExpiresAt}}</strong>,
+            setelah itu pesanan otomatis dibatalkan.
+        </div>
+        <form method="POST" action="/pesanan/{{.Pesanan.ID}}/bayar" style="margin-bottom: 20px">
+            <button class="btn">Konfirmasi Pembayaran</button>
+        </form>
+    {{else if eq .Pesanan.Status "EXPIRED"}}
+        <p class="form-hint">Pesanan tidak dibayar dalam 15 menit, tiket sudah dilepas kembali.</p>
+    {{end}}
+
+    <h4>Tiket</h4>
+    <table class="table">
+        <thead>
+            <tr>
+                <th>Nama Pemegang</th>
+                <th>Kategori</th>
+                <th>Tahap</th>
+                <th class="num">Harga</th>
+                <th>Kode Tiket</th>
+                <th>Status</th>
+            </tr>
+        </thead>
+        <tbody>
+        {{range .Pesanan.Tiket}}
+            <tr>
+                <td>{{.NamaPemegang}}</td>
+                <td>{{.NamaKategori}}</td>
+                <td>{{.NamaTahap}}</td>
+                <td class="num">{{rupiah .HargaBayar}}</td>
+                <td>{{if .KodeTiket}}<span class="kode">{{.KodeTiket}}</span>{{else}}-{{end}}</td>
+                <td><span class="badge badge-{{.Status}}">{{.Status}}</span></td>
+            </tr>
+        {{end}}
+        </tbody>
+    </table>
+    {{if eq .Pesanan.Status "PAID"}}
+        <p class="form-hint">Tunjukkan kode tiket kepada petugas di pintu masuk.</p>
+    {{end}}
+{{end}}

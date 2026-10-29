@@ -11,7 +11,7 @@ import (
 var ErrTidakDitemukan = errors.New("Data tidak ditemukan")
 
 // querier adalah kemampuan menjalankan SELECT banyak baris.
-// *sql.DB dan *sql.Tx sama-sama memilikinya, jadi ambilKategoriDanTahap
+// *sql.DB dan *sql.Tx sama-sama memilikinya, jadi AmbilKategoriDanTahap
 // bisa dipakai di luar maupun di dalam transaksi.
 type querier interface {
 	QueryContext(ctx context.Context, query string, args ...any) (*sql.Rows, error)
@@ -39,7 +39,31 @@ func ambilSemuaEvent(ctx context.Context, db *sql.DB) ([]Event, error) {
 	return hasil, rows.Err()
 }
 
-func getEventById(ctx context.Context, db *sql.DB, id int64) (Event, error) {
+// AmbilEventDibuka mengambil event yang bisa dipesan pembeli:
+// status OPEN dan tanggalnya belum lewat. Dipakai halaman katalog di paket order.
+func AmbilEventDibuka(ctx context.Context, db *sql.DB, now time.Time) ([]Event, error) {
+	rows, err := db.QueryContext(ctx,
+		`SELECT id, nama, lokasi, COALESCE(deskripsi, ''), tanggal_event, kapasitas, status
+		FROM events
+		WHERE status = ? AND deleted_at IS NULL AND tanggal_event > ?
+		ORDER BY tanggal_event`, StatusOpen, now)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var hasil []Event
+	for rows.Next() {
+		var e Event
+		if err := rows.Scan(&e.ID, &e.Nama, &e.Lokasi, &e.Deskripsi, &e.TanggalEvent, &e.Kapasitas, &e.Status); err != nil {
+			return nil, err
+		}
+		hasil = append(hasil, e)
+	}
+	return hasil, rows.Err()
+}
+
+func GetEventById(ctx context.Context, db *sql.DB, id int64) (Event, error) {
 	var e Event
 
 	err := db.QueryRowContext(ctx,
@@ -53,8 +77,8 @@ func getEventById(ctx context.Context, db *sql.DB, id int64) (Event, error) {
 	return e, err
 }
 
-// ambilKategoriDanTahap mengambil semua kategori sebuah event beserta tahapnya (urut sesuai kolom urutan)
-func ambilKategoriDanTahap(ctx context.Context, q querier, eventID int64) ([]Kategori, error) {
+// AmbilKategoriDanTahap mengambil semua kategori sebuah event beserta tahapnya (urut sesuai kolom urutan)
+func AmbilKategoriDanTahap(ctx context.Context, q querier, eventID int64) ([]Kategori, error) {
 	// 1. ambil kategori
 	rows, err := q.QueryContext(ctx,
 		"SELECT id, event_id, nama, kuota FROM ticket_categories WHERE event_id = ? AND deleted_at IS NULL ORDER BY id",
@@ -127,17 +151,7 @@ func simpanEvent(ctx context.Context, db *sql.DB, e Event) (int64, error) {
 // kunciEventDraft mengunci baris event sampai transaksi selesai,
 // dan memastikan event masih DRAFT (struktur kuota event OPEN tidak boleh diubah).
 func kunciEventDraft(ctx context.Context, tx *sql.Tx, id int64) (Event, error) {
-	var e Event
-
-	err := tx.QueryRowContext(ctx,
-		`SELECT id, nama, lokasi, COALESCE(deskripsi, ''), tanggal_event, kapasitas, status
-		FROM events WHERE id = ? AND deleted_at IS NULL
-		FOR UPDATE`, id,
-	).Scan(&e.ID, &e.Nama, &e.Lokasi, &e.Deskripsi, &e.TanggalEvent, &e.Kapasitas, &e.Status)
-
-	if errors.Is(err, sql.ErrNoRows) {
-		return e, ErrTidakDitemukan
-	}
+	e, err := KunciEvent(ctx, tx, id)
 	if err != nil {
 		return e, err
 	}
@@ -397,7 +411,7 @@ func bukaPenjualan(ctx context.Context, db *sql.DB, eventID int64, now time.Time
 	}
 
 	// data dibaca lewat tx, jadi yang dicek adalah keadaan yang sedang terkunci
-	kategori, err := ambilKategoriDanTahap(ctx, tx, eventID)
+	kategori, err := AmbilKategoriDanTahap(ctx, tx, eventID)
 	if err != nil {
 		return nil, err
 	}
