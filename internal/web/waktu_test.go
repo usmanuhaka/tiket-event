@@ -45,4 +45,8 @@ func TestTanggal(t *testing.T) {
 	if got := Tanggal(time.Date(2026, 5, 3, 1, 5, 0, 0, Jakarta)); got != "03 Mei 2026 01:05 WIB" {
 		t.Errorf("dapat %q", got)
 	}
+	// 13 Des 18:00 UTC sudah 14 Des di Jakarta
+	if got := TanggalSaja(time.Date(2026, 12, 13, 18, 0, 0, 0, time.UTC)); got != "14 Des 2026" {
+		t.Errorf("TanggalSaja: dapat %q", got)
+	}
 }
