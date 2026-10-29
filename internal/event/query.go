@@ -39,6 +39,30 @@ func ambilSemuaEvent(ctx context.Context, db *sql.DB) ([]Event, error) {
 	return hasil, rows.Err()
 }
 
+// AmbilEventDibuka mengambil event yang bisa dipesan pembeli:
+// status OPEN dan tanggalnya belum lewat. Dipakai halaman katalog di paket order.
+func AmbilEventDibuka(ctx context.Context, db *sql.DB, now time.Time) ([]Event, error) {
+	rows, err := db.QueryContext(ctx,
+		`SELECT id, nama, lokasi, COALESCE(deskripsi, ''), tanggal_event, kapasitas, status
+		FROM events
+		WHERE status = ? AND deleted_at IS NULL AND tanggal_event > ?
+		ORDER BY tanggal_event`, StatusOpen, now)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var hasil []Event
+	for rows.Next() {
+		var e Event
+		if err := rows.Scan(&e.ID, &e.Nama, &e.Lokasi, &e.Deskripsi, &e.TanggalEvent, &e.Kapasitas, &e.Status); err != nil {
+			return nil, err
+		}
+		hasil = append(hasil, e)
+	}
+	return hasil, rows.Err()
+}
+
 func GetEventById(ctx context.Context, db *sql.DB, id int64) (Event, error) {
 	var e Event
 
