@@ -21,6 +21,27 @@ Spesifikasi lengkap ada di [docs/PRD.md](docs/PRD.md).
    C:\xampp\mysql\bin\mysql.exe -uroot --default-character-set=utf8mb4 tiket_event_test -e "source migrations/001_nama.sql"
    ```
    Bisa juga lewat menu **Import** di phpMyAdmin. Jalankan hanya file yang belum pernah dijalankan.
+   File `*_data_contoh_*.sql` cukup dijalankan ke `tiket_event` (test membuat datanya sendiri),
+   dan aman dijalankan ulang karena memakai `INSERT IGNORE`.
+
+| File | Isi |
+|---|---|
+| `001_users.sql` | tabel `users` dan `sessions` |
+| `002_data_contoh_users.sql` | akun demo (lihat di bawah) |
+
+## Akun demo
+Dibuat oleh `migrations/002_data_contoh_users.sql`.
+
+| Peran | Email | Password |
+|---|---|---|
+| Admin | `admin@kampus.test` | `demo12345` |
+| Petugas pintu | `petugas@kampus.test` | `demo12345` |
+| Pembeli | `pembeli@kampus.test` | `demo12345` |
+
+> **Password ini hanya untuk demo lokal.** Semua orang yang membaca repo ini bisa melihatnya,
+> jadi jangan pernah menjalankan data contoh ini di server yang bisa diakses orang lain.
+
+Pembeli baru bisa mendaftar sendiri lewat halaman `/daftar`. Akun admin dan petugas hanya dibuat lewat data contoh.
 
 ## Konfigurasi
 Salin `.env.example` menjadi `.env`. Isinya sudah cocok untuk XAMPP bawaan (user `root` tanpa password).
