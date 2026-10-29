@@ -279,6 +279,40 @@
                 color: #a5281b;
             }
 
+            /* ===== Label status: <span class="badge badge-DRAFT"> ===== */
+            .badge {
+                display: inline-block;
+                padding: 1px 8px;
+                border-radius: 10px;
+                font-size: 12px;
+                font-weight: 600;
+                background-color: #e9ecf1;
+                color: #2d3436;
+            }
+            .badge-DRAFT     { background-color: #fdf3d7; color: #8a6d0b; }
+            .badge-OPEN      { background-color: #e1f3e5; color: #22673a; }
+            .badge-CANCELLED { background-color: #fbe3e1; color: #a5281b; }
+
+            /* ===== Form satu baris (isian berjajar ke samping) ===== */
+            .form-baris {
+                display: flex;
+                flex-wrap: wrap;
+                gap: 8px;
+                align-items: flex-end;
+                margin-bottom: 16px;
+            }
+            .form-baris .form-group {
+                margin-bottom: 0;
+            }
+
+            /* ===== Kotak per kategori di halaman detail event ===== */
+            .kotak {
+                margin-bottom: 20px;
+                padding: 16px;
+                border: 1px solid #e2e6ea;
+                border-radius: 4px;
+            }
+
             /* ===== Footer ===== */
             footer {
                 clear: both;

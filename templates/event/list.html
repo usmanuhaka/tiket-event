@@ -1,0 +1,32 @@
+{{define "content"}}
+    <div class="page-head clearfix">
+        <h3 class="float-left">Kelola Event</h3>
+        <a href="/admin/event/form" class="btn float-right">+ Tambah Event</a>
+    </div>
+    <table class="table">
+        <thead>
+            <tr>
+                <th width="50px">No</th>
+                <th>Nama Event</th>
+                <th>Tanggal</th>
+                <th>Lokasi</th>
+                <th class="num">Kapasitas</th>
+                <th>Status</th>
+            </tr>
+        </thead>
+        <tbody>
+        {{range $i, $e := .Event}}
+            <tr>
+                <td>{{add_one $i}}</td>
+                <td><a href="/admin/event/{{$e.ID}}">{{$e.Nama}}</a></td>
+                <td>{{tanggal $e.TanggalEvent}}</td>
+                <td>{{$e.Lokasi}}</td>
+                <td class="num">{{$e.Kapasitas}}</td>
+                <td><span class="badge badge-{{$e.Status}}">{{$e.Status}}</span></td>
+            </tr>
+        {{else}}
+            <tr><td colspan="6">Belum ada event.</td></tr>
+        {{end}}
+        </tbody>
+    </table>
+{{end}}
