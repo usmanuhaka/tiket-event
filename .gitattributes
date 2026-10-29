@@ -1,0 +1,2 @@
+# simpan semua file teks dengan akhir baris LF supaya gofmt di Windows dan CI (Linux) sama
+* text=auto eol=lf

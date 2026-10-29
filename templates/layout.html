@@ -1,0 +1,270 @@
+{{define "layout"}}
+<!DOCTYPE html>
+<html lang="id">
+    <head>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <title>Tiket Event</title>
+
+        <style>
+            * {
+                margin: 0;
+                padding: 0;
+                box-sizing: border-box;
+            }
+            html, body {
+                height: 100%;
+            }
+            body {
+                font-family: -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+                font-size: 15px;
+                line-height: 1.6;
+                color: #2d3436;
+                /* warna kolom sidebar dibuat dari background body agar tingginya selalu penuh */
+                background: linear-gradient(to right, #f5f6f8 220px, #ffffff 220px);
+            }
+            a {
+                color: #2c5282;
+                text-decoration: none;
+            }
+
+            /* ===== Header ===== */
+            header {
+                height: 64px;
+                padding: 0 24px;
+                background-color: #1f2a3a;
+                border-bottom: 3px solid #c9a227;
+                color: #ffffff;
+            }
+            header .brand {
+                float: left;
+                font-size: 20px;
+                font-weight: 600;
+                line-height: 61px;
+                letter-spacing: 0.5px;
+            }
+            header .tagline {
+                float: left;
+                margin-left: 14px;
+                padding-left: 14px;
+                border-left: 1px solid #4a5568;
+                font-size: 13px;
+                line-height: 61px;
+                color: #a0aec0;
+            }
+
+            /* ===== Sidebar ===== */
+            aside {
+                float: left;
+                width: 220px;
+                padding: 20px 0;
+            }
+            aside .menu-title {
+                padding: 0 24px 8px;
+                font-size: 11px;
+                font-weight: 600;
+                text-transform: uppercase;
+                letter-spacing: 1px;
+                color: #8a94a6;
+            }
+            aside ul {
+                list-style: none;
+            }
+            aside li a {
+                display: block;
+                padding: 9px 24px;
+                border-left: 3px solid transparent;
+                color: #2d3436;
+            }
+            aside li a:hover {
+                background-color: #e9ecf1;
+                border-left-color: #c9a227;
+                color: #1f2a3a;
+            }
+
+            /* ===== Konten ===== */
+            main {
+                /* flow-root: supaya clear/clearfix di dalam konten tidak ikut "clear" float sidebar */
+                display: flow-root;
+                margin-left: 220px;
+                padding: 28px 32px;
+                /* 100vh - tinggi header (64+3) - tinggi footer (48) */
+                min-height: calc(100vh - 115px);
+            }
+            main h1, main h2, main h3, main h4 {
+                margin-bottom: 12px;
+                color: #1f2a3a;
+            }
+            main p {
+                margin-bottom: 12px;
+            }
+            main ul, main ol {
+                margin: 0 0 12px 22px;
+            }
+
+            /* ===== Tabel: <table class="table"> ===== */
+            .table {
+                width: 100%;
+                margin-bottom: 16px;
+                border-collapse: collapse;
+                font-size: 14px;
+            }
+            .table th,
+            .table td {
+                padding: 10px 12px;
+                border-bottom: 1px solid #e2e6ea;
+                text-align: left;
+                vertical-align: top;
+            }
+            .table th {
+                background-color: #f5f6f8;
+                border-bottom: 2px solid #d5dae1;
+                font-weight: 600;
+                color: #1f2a3a;
+            }
+            .table tbody tr:nth-child(even) {
+                background-color: #fafbfc;
+            }
+            .table tbody tr:hover {
+                background-color: #fdf8e8;
+            }
+            .table .num {
+                text-align: right;
+            }
+
+            /* ===== Tombol: <a class="btn"> / <button class="btn"> ===== */
+            .btn {
+                display: inline-block;
+                padding: 7px 16px;
+                border: 1px solid #1f2a3a;
+                border-radius: 4px;
+                background-color: #1f2a3a;
+                color: #ffffff;
+                font-family: inherit;
+                font-size: 14px;
+                line-height: 1.4;
+                cursor: pointer;
+            }
+            .btn:hover {
+                background-color: #2f3f56;
+                border-color: #2f3f56;
+            }
+            .btn-light {
+                background-color: #ffffff;
+                color: #1f2a3a;
+                border-color: #d5dae1;
+            }
+            .btn-light:hover {
+                background-color: #f5f6f8;
+                border-color: #d5dae1;
+            }
+
+            .btn-sm {
+                padding: 4px 10px;
+                font-size: 13px;
+            }
+            .btn-danger {
+                background-color: #ffffff;
+                color: #c0392b;
+                border-color: #e3b5b0;
+            }
+            .btn-danger:hover {
+                background-color: #c0392b;
+                border-color: #c0392b;
+                color: #ffffff;
+            }
+
+            /* kelompok tombol aksi di kolom tabel */
+            .actions {
+                display: flex;
+                gap: 6px;
+                align-items: center;
+                white-space: nowrap;
+            }
+            .actions form {
+                margin: 0;
+            }
+
+            /* ===== Form: <form class="form"> ===== */
+            .form {
+                max-width: 480px;
+            }
+            .form-group {
+                margin-bottom: 16px;
+            }
+            .form-group label {
+                display: block;
+                margin-bottom: 6px;
+                font-size: 14px;
+                font-weight: 600;
+                color: #1f2a3a;
+            }
+            .form-control {
+                display: block;
+                width: 100%;
+                padding: 8px 10px;
+                border: 1px solid #d5dae1;
+                border-radius: 4px;
+                background-color: #ffffff;
+                color: #2d3436;
+                font-family: inherit;
+                font-size: 14px;
+            }
+            .form-control:focus {
+                outline: none;
+                border-color: #c9a227;
+                box-shadow: 0 0 0 3px rgba(201, 162, 39, 0.2);
+            }
+            .form-hint {
+                margin-top: 4px;
+                font-size: 12px;
+                color: #8a94a6;
+            }
+            .form-actions {
+                margin-top: 24px;
+                padding-top: 16px;
+                border-top: 1px solid #e2e6ea;
+            }
+            .form-actions .btn {
+                margin-right: 8px;
+            }
+
+            /* ===== Positioning ===== */
+            .float-left  { float: left; }
+            .float-right { float: right; }
+            .clearfix::after {
+                content: "";
+                display: table;
+                clear: both;
+            }
+            /* baris judul halaman + tombol aksi di atas tabel */
+            .page-head {
+                margin-bottom: 16px;
+            }
+            main .page-head h3 {
+                margin: 0;
+                line-height: 34px;
+            }
+
+            /* ===== Footer ===== */
+            footer {
+                clear: both;
+                height: 48px;
+                padding: 0 24px;
+                background-color: #1f2a3a;
+                color: #a0aec0;
+                font-size: 13px;
+                line-height: 48px;
+                text-align: center;
+            }
+        </style>
+    </head>
+
+    <body>
+        <header>{{template "header" }}</header>
+        <aside>{{template "sidebar"}}</aside>
+        <main>{{template "content" .}}</main>
+        <footer>{{template "footer"}}</footer>
+    </body>
+</html>
+{{end}}
