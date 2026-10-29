@@ -32,6 +32,7 @@ Spesifikasi lengkap ada di [docs/PRD.md](docs/PRD.md).
 | `004_data_contoh_events.sql` | 2 event contoh dengan tanggal relatif dari saat file dijalankan: "Konser Akhir Tahun" (OPEN, ±45 hari lagi) dan "Seminar Produksi Musik" (DRAFT, sengaja belum lengkap untuk demo "Buka Penjualan" yang ditolak) |
 | `005_orders.sql` | tabel `orders` dan `tickets` |
 | `006_tiers_kuota_nol.sql` | mengizinkan kuota tahap 0 (hasil pemindahan kuota, lihat PRD §9) |
+| `007_promo.sql` | tabel `promo_codes`, `promo_categories`, dan kolom `orders.promo_code_id` |
 
 Karena tanggal di `004` dihitung dengan `DATE_ADD(NOW(), ...)`, menjalankan ulang file itu tidak menggeser tanggal
 event yang sudah ada (`INSERT IGNORE` melewatinya). Untuk data baru, hapus dulu event contoh lewat phpMyAdmin.
@@ -52,6 +53,15 @@ Login sebagai admin, lalu buka menu **Kelola Event**:
    mis. `TKT-7K3M9QX2`.
 4. Jika tidak dibayar dalam 15 menit, worker (berjalan tiap 1 menit di dalam server) membuat pesanan `EXPIRED`
    dan mengembalikan kuotanya. Aturan pengembalian kuota ke tahap yang sudah lewat ada di `docs/PRD.md` §9.
+
+## Kode promo
+- **Admin** membuat promo di menu **Kelola Promo**: kode (otomatis huruf besar), potongan 1–100%, kuota pemakaian,
+  dan kategori tempat promo berlaku (boleh dari beberapa event).
+- **Pembeli** mengisi **Kode Promo** di form pesan. Potongan dihitung per tiket, dibulatkan ke bawah,
+  hanya untuk tiket dari kategori yang terdaftar. Kode ditolak jika tidak ada, kuotanya habis,
+  atau tidak berlaku untuk satu pun tiket yang dipesan.
+- Satu pesanan = satu pemakaian, dihitung saat pesanan dibuat dan dikembalikan jika pesanan `EXPIRED`
+  (termasuk jika promonya sudah dihapus admin).
 
 ## Akun demo
 Dibuat oleh `migrations/002_data_contoh_users.sql`.
