@@ -136,3 +136,14 @@ Lebih sederhana, tetapi kursi dari tahap yang sudah lewat menjadi hangus.
    jadi bisa dijual lagi. Pembatalan event tidak mengubah kuota karena penjualan ditutup.
 7. **Kapan event boleh dibatalkan.** Hanya event `OPEN` yang belum dimulai (`tanggal_event > sekarang`).
    Event `DRAFT` cukup dihapus karena belum ada pesanan.
+
+### Keputusan: pemindahan tiket (BR-21 s.d. BR-23)
+1. **Siapa yang boleh memindahkan.** Hanya pembeli pemilik pesanan. Pemindahan hanya mengganti nama pemegang
+   dan kode tiket; pesanan dan pemiliknya tidak berubah.
+2. **Kode lama (BR-22)** disimpan di `ticket_transfers.kode_lama`. Saat pemeriksaan di pintu, pencarian
+   mendahulukan `tickets.kode_tiket` (kode yang berlaku), baru `ticket_transfers.kode_lama`, supaya kode lama
+   bisa dijelaskan sebagai "sudah tidak berlaku" dan kode yang berlaku selalu menang.
+3. **Syarat (BR-23):** tiket `ACTIVE` (belum dipakai masuk), event `OPEN`, dan event belum dimulai
+   (`tanggal_event > sekarang`). Pemindahan tidak terikat batas H-7 seperti pembatalan.
+4. **Tiket yang sudah dipindahkan tidak bisa dibatalkan oleh pembeli** (cek tambahan pada BR-17).
+   Jika event dibatalkan penyelenggara (BR-20), tiket tersebut tetap di-refund 100% ke pemilik pesanan.
