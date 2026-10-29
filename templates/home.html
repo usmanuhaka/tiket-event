@@ -1,5 +1,7 @@
 {{define "content"}}
-    <h3>Selamat datang</h3>
+    <h3>Selamat datang{{if .Nama}}, {{.Nama}}{{end}}</h3>
     <p>Sistem penjualan tiket konser dan seminar Komunitas Musik Kampus.</p>
-    <p>Fitur pemesanan, pembayaran, dan pemeriksaan tiket akan ditambahkan bertahap.</p>
+    {{if not .Nama}}
+        <p>Silakan <a href="/login">login</a> atau <a href="/daftar">daftar</a> untuk memesan tiket.</p>
+    {{end}}
 {{end}}
