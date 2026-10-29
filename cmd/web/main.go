@@ -8,7 +8,6 @@ import (
 	"net/http"
 	"os"
 	"time"
-	_ "time/tzdata" // data zona waktu ikut di dalam program, supaya Asia/Jakarta selalu dikenali
 
 	_ "github.com/go-sql-driver/mysql"
 	"github.com/joho/godotenv"
