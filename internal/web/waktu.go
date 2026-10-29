@@ -42,3 +42,10 @@ func Tanggal(t time.Time) string {
 	t = t.In(Jakarta)
 	return t.Format("02") + " " + namaBulan[t.Month()-1] + " " + t.Format("2006 15:04") + " WIB"
 }
+
+// TanggalSaja memformat tanggal tanpa jam, mis. "13 Des 2026".
+// Dipakai di template sebagai {{tanggal_saja .BatasBatal}}.
+func TanggalSaja(t time.Time) string {
+	t = t.In(Jakarta)
+	return t.Format("02") + " " + namaBulan[t.Month()-1] + " " + t.Format("2006")
+}

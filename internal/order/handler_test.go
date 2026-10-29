@@ -1,6 +1,7 @@
 package order
 
 import (
+	"context"
 	"database/sql"
 	"fmt"
 	"net/http"
@@ -227,5 +228,43 @@ func TestPesanDenganKodePromoLewatHTTP(t *testing.T) {
 		if !strings.Contains(isi, mau) {
 			t.Errorf("detail pesanan tidak memuat %q", mau)
 		}
+	}
+}
+
+// Tombol "Batalkan" dan info refund di detail pesanan (BR-17, BR-18)
+func TestDetailPesananMenampilkanBatalDanRefund(t *testing.T) {
+	db := bukaDBKosong(t)
+	ctx := context.Background()
+	e := siapkanEvent(t, db, []tahapUji{{"Normal", 150000, 10, 20}})
+	budi := auth.User{ID: buatPembeli(t, db), Nama: "Budi", Role: auth.PeranPembeli}
+	mux := siapkanMux(t, db)
+
+	orderID := pesanSatu(t, e, budi.ID, 2, waktuSekarang(), db)
+	if err := bayarPesanan(ctx, db, orderID, budi.ID, waktuSekarang()); err != nil {
+		t.Fatal(err)
+	}
+	detail := fmt.Sprintf("/pesanan/%d", orderID)
+
+	// event 30 hari lagi: kedua tiket bisa dibatalkan dengan estimasi refund 75% x 150.000
+	isi := kirim(mux, &budi, "GET", detail, nil).Body.String()
+	if strings.Count(isi, "/batal\"") != 2 || !strings.Contains(isi, "Rp112.500") || !strings.Contains(isi, "paling lambat") {
+		t.Error("tombol Batalkan atau estimasi refund tidak tampil")
+	}
+
+	// satu tiket sudah di-refund: tampil jumlah refundnya, tombolnya hilang
+	var tiketID int64
+	db.QueryRow("SELECT id FROM tickets WHERE order_id = ? ORDER BY id LIMIT 1", orderID).Scan(&tiketID)
+	db.Exec("UPDATE tickets SET status = 'REFUNDED' WHERE id = ?", tiketID)
+	db.Exec("INSERT INTO refunds (ticket_id, order_id, user_id, jumlah, persen, alasan) VALUES (?, ?, ?, 112500, 75, 'PEMBELI')", tiketID, orderID, budi.ID)
+	isi = kirim(mux, &budi, "GET", detail, nil).Body.String()
+	if strings.Count(isi, "/batal\"") != 1 || !strings.Contains(isi, "Rp112.500 (75%)") {
+		t.Error("refund tiket pertama tidak tampil atau tombolnya masih ada")
+	}
+
+	// event dibatalkan: tidak ada tombol batal, tampil keterangan refund 100%
+	db.Exec("UPDATE events SET status = 'CANCELLED' WHERE id = ?", e.eventID)
+	isi = kirim(mux, &budi, "GET", detail, nil).Body.String()
+	if strings.Contains(isi, "/batal\"") || !strings.Contains(isi, "dibatalkan penyelenggara") {
+		t.Error("detail pesanan untuk event yang dibatalkan tidak sesuai")
 	}
 }

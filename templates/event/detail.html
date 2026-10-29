@@ -25,8 +25,19 @@
                 <button class="btn btn-danger">Hapus Event</button>
             </form>
         </div>
+    {{else if eq .Event.Status "CANCELLED"}}
+        <div class="alert alert-error">
+            Event ini dibatalkan. {{.Refund.JumlahTiket}} tiket dikembalikan 100%,
+            total {{rupiah .Refund.Total}}. Pesanan yang belum dibayar ikut dibatalkan.
+        </div>
     {{else}}
         <p class="form-hint">Penjualan sudah dibuka: kategori dan tahap harga tidak bisa diubah lagi.</p>
+        {{if .BisaDibatalkan}}
+            <form method="POST" action="/admin/event/{{.Event.ID}}/batal" style="margin-bottom: 20px"
+                onsubmit="return confirm('Batalkan event ini? Semua tiket yang sudah dibayar dikembalikan 100% dan penjualan ditutup. Tindakan ini tidak bisa dibatalkan.')">
+                <button class="btn btn-danger">Batalkan Event</button>
+            </form>
+        {{end}}
     {{end}}
 
     {{if .Masalah}}
