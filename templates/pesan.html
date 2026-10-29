@@ -1,5 +1,9 @@
 {{define "content"}}
     <h3>{{.Judul}}</h3>
     <p>{{.Isi}}</p>
-    <a href="/" class="btn btn-light">&larr; Kembali ke beranda</a>
+    {{if .Kembali}}
+        <a href="{{.Kembali}}" class="btn btn-light">&larr; Kembali</a>
+    {{else}}
+        <a href="/" class="btn btn-light">&larr; Kembali ke beranda</a>
+    {{end}}
 {{end}}

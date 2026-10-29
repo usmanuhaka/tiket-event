@@ -427,3 +427,20 @@ func bukaPenjualan(ctx context.Context, db *sql.DB, eventID int64, now time.Time
 	}
 	return nil, tx.Commit()
 }
+
+// RingkasanRefund adalah jumlah tiket dan total uang yang dikembalikan karena event dibatalkan (BR-20)
+type RingkasanRefund struct {
+	JumlahTiket int
+	Total       int64
+}
+
+// ringkasanRefundEvent dipakai halaman detail event yang sudah CANCELLED
+func ringkasanRefundEvent(ctx context.Context, db *sql.DB, eventID int64) (RingkasanRefund, error) {
+	var r RingkasanRefund
+	err := db.QueryRowContext(ctx,
+		`SELECT COUNT(*), COALESCE(SUM(r.jumlah), 0)
+		FROM refunds r JOIN orders o ON o.id = r.order_id
+		WHERE o.event_id = ? AND r.alasan = 'EVENT_DIBATALKAN'`, eventID,
+	).Scan(&r.JumlahTiket, &r.Total)
+	return r, err
+}
