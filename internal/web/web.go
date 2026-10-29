@@ -30,9 +30,10 @@ func AddOne(n int) int {
 }
 
 var funcs = template.FuncMap{
-	"rupiah":  Rupiah,
-	"add_one": AddOne,
-	"tanggal": Tanggal,
+	"rupiah":       Rupiah,
+	"add_one":      AddOne,
+	"tanggal":      Tanggal,
+	"tanggal_saja": TanggalSaja,
 }
 
 // ParseHalaman memuat layout + header + sidebar + footer + satu file halaman.
