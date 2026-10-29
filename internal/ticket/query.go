@@ -126,3 +126,146 @@ func batalkanTiket(ctx context.Context, db *sql.DB, tiketID, userID int64, now t
 
 	return hasil, tx.Commit()
 }
+
+// ===== Pembatalan event oleh admin (BR-20) =====
+
+// RingkasanBatalEvent merangkum hasil pembatalan event
+type RingkasanBatalEvent struct {
+	TiketDirefund     int
+	TotalRefund       int64
+	PesananDibatalkan int // pesanan HELD yang dibatalkan
+}
+
+// batalkanEvent membatalkan event OPEN yang belum dimulai:
+//   - setiap tiket ACTIVE menjadi REFUNDED dengan refund 100% ke pemilik pesanan
+//   - pesanan HELD menjadi CANCELLED beserta tiketnya (belum dibayar, tanpa refund)
+//   - event menjadi CANCELLED sehingga penjualan tertutup
+//
+// Kuota tahap dan pemakaian promo tidak diubah (penjualan ditutup; keputusan di PRD §9).
+// Urutan kunci: event -> semua pesanan (ORDER BY id) -> semua tiket (ORDER BY id).
+func batalkanEvent(ctx context.Context, db *sql.DB, eventID int64, now time.Time) (RingkasanBatalEvent, error) {
+	var ringkasan RingkasanBatalEvent
+
+	tx, err := db.BeginTx(ctx, nil)
+	if err != nil {
+		return ringkasan, err
+	}
+	defer tx.Rollback()
+
+	// 1. kunci event: setelah ini, tidak ada pemesanan, pembayaran, worker, atau pembatalan tiket
+	// untuk event ini yang bisa berjalan sampai transaksi selesai
+	e, err := event.KunciEvent(ctx, tx, eventID)
+	if errors.Is(err, event.ErrTidakDitemukan) {
+		return ringkasan, ErrTidakDitemukan
+	}
+	if err != nil {
+		return ringkasan, err
+	}
+	if e.Status != event.StatusOpen {
+		return ringkasan, salahInput("Hanya event yang sedang dibuka (OPEN) yang bisa dibatalkan; status event ini %s", e.Status)
+	}
+	if !e.TanggalEvent.After(now) {
+		return ringkasan, salahInput("Event sudah dimulai, tidak bisa dibatalkan")
+	}
+
+	// 2. kunci semua pesanan event ini, berurutan menurut id
+	pemilik := map[int64]int64{} // id pesanan -> id pembeli (penerima refund)
+	var pesananHeldID []int64
+	rows, err := tx.QueryContext(ctx,
+		"SELECT id, user_id, status FROM orders WHERE event_id = ? ORDER BY id FOR UPDATE", eventID)
+	if err != nil {
+		return ringkasan, err
+	}
+	for rows.Next() {
+		var id, userID int64
+		var status string
+		if err := rows.Scan(&id, &userID, &status); err != nil {
+			rows.Close()
+			return ringkasan, err
+		}
+		pemilik[id] = userID
+		if status == pesananHeld {
+			pesananHeldID = append(pesananHeldID, id)
+		}
+	}
+	rows.Close()
+	if err := rows.Err(); err != nil {
+		return ringkasan, err
+	}
+
+	// 3. kunci semua tiket event ini, berurutan menurut id
+	type tiketEvent struct {
+		id, orderID, hargaBayar int64
+	}
+	var tiketAktif []tiketEvent
+	rows, err = tx.QueryContext(ctx,
+		`SELECT t.id, t.order_id, t.harga_bayar, t.status
+		FROM tickets t JOIN orders o ON o.id = t.order_id
+		WHERE o.event_id = ?
+		ORDER BY t.id
+		FOR UPDATE`, eventID)
+	if err != nil {
+		return ringkasan, err
+	}
+	for rows.Next() {
+		var t tiketEvent
+		var status string
+		if err := rows.Scan(&t.id, &t.orderID, &t.hargaBayar, &status); err != nil {
+			rows.Close()
+			return ringkasan, err
+		}
+		// hanya tiket ACTIVE yang di-refund; tiket REFUNDED (sudah dibatalkan pembeli),
+		// CANCELLED, dan USED tidak diubah
+		if status == tiketActive {
+			tiketAktif = append(tiketAktif, t)
+		}
+	}
+	rows.Close()
+	if err := rows.Err(); err != nil {
+		return ringkasan, err
+	}
+
+	// 4. BR-20: refund 100% untuk setiap tiket ACTIVE
+	for _, t := range tiketAktif {
+		jumlah := HitungRefund(t.hargaBayar, PersenRefundEvent)
+		if _, err := tx.ExecContext(ctx,
+			`INSERT INTO refunds (ticket_id, order_id, user_id, jumlah, persen, alasan)
+			VALUES (?, ?, ?, ?, ?, ?)`,
+			t.id, t.orderID, pemilik[t.orderID], jumlah, PersenRefundEvent, AlasanEventDibatalkan,
+		); err != nil {
+			return ringkasan, err
+		}
+		if _, err := tx.ExecContext(ctx,
+			"UPDATE tickets SET status = ?, updated_at = NOW() WHERE id = ?", tiketRefunded, t.id,
+		); err != nil {
+			return ringkasan, err
+		}
+		ringkasan.TiketDirefund++
+		ringkasan.TotalRefund += jumlah
+	}
+
+	// 5. BR-20: pesanan HELD dibatalkan beserta tiketnya
+	for _, id := range pesananHeldID {
+		if _, err := tx.ExecContext(ctx,
+			"UPDATE tickets SET status = ?, updated_at = NOW() WHERE order_id = ? AND status = ?",
+			tiketCancelled, id, tiketHeld,
+		); err != nil {
+			return ringkasan, err
+		}
+		if _, err := tx.ExecContext(ctx,
+			"UPDATE orders SET status = ?, updated_at = NOW() WHERE id = ?", pesananCancelled, id,
+		); err != nil {
+			return ringkasan, err
+		}
+		ringkasan.PesananDibatalkan++
+	}
+
+	// 6. BR-20: penjualan ditutup
+	if _, err := tx.ExecContext(ctx,
+		"UPDATE events SET status = ?, updated_at = NOW() WHERE id = ?", event.StatusCancelled, eventID,
+	); err != nil {
+		return ringkasan, err
+	}
+
+	return ringkasan, tx.Commit()
+}
