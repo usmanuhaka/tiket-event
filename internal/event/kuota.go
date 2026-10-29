@@ -12,9 +12,10 @@ import (
 //
 // Urutan kunci yang WAJIB diikuti setiap transaksi yang mengubah kuota:
 //   1. baris event         -> KunciEvent
-//   2. baris pesanan       -> (di paket order, jika ada)
-//   3. baris tahap harga   -> KunciTahapKategori (selalu ORDER BY id)
-//   4. baris promo         -> promo.KunciPromo / promo.KembalikanPemakaian (paling akhir)
+//   2. baris pesanan       -> (di paket order/ticket, jika ada; banyak pesanan: ORDER BY id)
+//   3. baris tiket         -> (di paket ticket, saat pembatalan; banyak tiket: ORDER BY id)
+//   4. baris tahap harga   -> KunciTahapKategori (selalu ORDER BY id)
+//   5. baris promo         -> promo.KunciPromo / promo.KembalikanPemakaian (paling akhir)
 // Karena semua transaksi mengunci dengan urutan yang sama, dua transaksi tidak bisa
 // saling menunggu (deadlock), dan transaksi untuk event yang sama dilayani satu per satu.
 // Promo paling akhir karena satu promo bisa dipakai beberapa event: transaksi yang sedang
