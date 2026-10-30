@@ -1,0 +1,71 @@
+{{define "content"}}
+    <div class="page-head clearfix">
+        <h3 class="float-left">Laporan: {{.Laporan.NamaEvent}} <span class="badge badge-{{.Laporan.StatusEvent}}">{{.Laporan.StatusEvent}}</span></h3>
+        <a href="/admin/laporan" class="btn btn-light float-right">&larr; Semua event</a>
+    </div>
+    <p>{{tanggal .Laporan.TanggalEvent}} &middot; dibaca {{tanggal .Dibaca}}</p>
+
+    <table class="table">
+        <thead>
+            <tr>
+                <th>Kategori / Tahap</th>
+                <th class="num">Harga</th>
+                <th class="num">Terjual</th>
+                <th class="num">Di-refund</th>
+                <th class="num">Sudah Masuk</th>
+                <th class="num">Kotor</th>
+                <th class="num">Potongan Promo</th>
+                <th class="num">Refund</th>
+                <th class="num">Bersih</th>
+            </tr>
+        </thead>
+        <tbody>
+        {{range .Laporan.Kategori}}
+            {{range .Tahap}}
+                <tr>
+                    <td>{{.NamaKategori}} / {{.NamaTahap}}</td>
+                    <td class="num">{{rupiah .Harga}}</td>
+                    <td class="num">{{.Terjual}}</td>
+                    <td class="num">{{.TiketRefund}}</td>
+                    <td class="num">{{.SudahMasuk}}</td>
+                    <td class="num">{{rupiah .Kotor}}</td>
+                    <td class="num">{{rupiah .Potongan}}</td>
+                    <td class="num">{{rupiah .Refund}}</td>
+                    <td class="num">{{rupiah .Bersih}}</td>
+                </tr>
+            {{end}}
+            <tr style="font-weight: 600">
+                <td>Subtotal {{.Nama}}</td>
+                <td></td>
+                <td class="num">{{.Subtotal.Terjual}}</td>
+                <td class="num">{{.Subtotal.TiketRefund}}</td>
+                <td class="num">{{.Subtotal.SudahMasuk}}</td>
+                <td class="num">{{rupiah .Subtotal.Kotor}}</td>
+                <td class="num">{{rupiah .Subtotal.Potongan}}</td>
+                <td class="num">{{rupiah .Subtotal.Refund}}</td>
+                <td class="num">{{rupiah .Subtotal.Bersih}}</td>
+            </tr>
+        {{else}}
+            <tr><td colspan="9">Event ini belum punya kategori tiket.</td></tr>
+        {{end}}
+        </tbody>
+        <tfoot>
+            <tr style="font-weight: 700; background-color: #f5f6f8">
+                <td>TOTAL EVENT</td>
+                <td></td>
+                <td class="num">{{.Laporan.Total.Terjual}}</td>
+                <td class="num">{{.Laporan.Total.TiketRefund}}</td>
+                <td class="num">{{.Laporan.Total.SudahMasuk}}</td>
+                <td class="num">{{rupiah .Laporan.Total.Kotor}}</td>
+                <td class="num">{{rupiah .Laporan.Total.Potongan}}</td>
+                <td class="num">{{rupiah .Laporan.Total.Refund}}</td>
+                <td class="num">{{rupiah .Laporan.Total.Bersih}}</td>
+            </tr>
+        </tfoot>
+    </table>
+
+    <p class="form-hint">
+        Terjual = tiket yang pernah dibayar (ACTIVE, USED, REFUNDED). Kotor = harga tahap sebelum promo.
+        Bersih = kotor &minus; potongan promo &minus; refund (BR-28). Semua angka dibaca dari satu waktu yang sama.
+    </p>
+{{end}}

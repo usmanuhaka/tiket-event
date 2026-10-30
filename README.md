@@ -90,6 +90,21 @@ Login sebagai admin, lalu buka menu **Kelola Event**:
 Kode lama dari tiket yang sudah dipindahkan ditolak dengan nama penerimanya. Tiket untuk event lain, bukan hari event
 (tanggal WIB), belum dibayar, atau sudah dibatalkan juga ditolak dengan alasannya.
 
+## Laporan penjualan (Admin)
+Menu **Laporan** menampilkan semua event non-DRAFT beserta jumlah terjual dan pendapatan bersihnya.
+Klik **Lihat Laporan** untuk angka per tahap, subtotal per kategori, dan total event:
+
+| Kolom | Arti |
+|---|---|
+| Terjual | tiket yang pernah dibayar: `ACTIVE`, `USED`, `REFUNDED` (`HELD`/`CANCELLED` tidak dihitung) |
+| Kotor | jumlah harga tahap sebelum promo |
+| Potongan Promo | jumlah potongan promo |
+| Refund | jumlah uang yang dikembalikan (75% pembatalan pembeli, 100% event dibatalkan) |
+| Bersih | kotor − potongan − refund (BR-28) |
+
+Semua angka satu laporan dibaca dari satu snapshot database. Event yang dibatalkan penyelenggara bersih Rp0,
+kecuali ada pembeli yang sudah membatalkan sebelumnya (sisa 25% tiket itu tetap tercatat, lihat PRD §9).
+
 **Demo:** data contoh tidak punya event hari ini. Sebagai admin, buat event dengan tanggal hari ini dan jam yang belum lewat,
 tambahkan kategori dan tahap, lalu buka penjualan; sebagai pembeli, pesan dan bayar; lalu periksa sebagai petugas.
 
