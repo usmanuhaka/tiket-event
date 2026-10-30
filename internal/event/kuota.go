@@ -20,6 +20,10 @@ import (
 // saling menunggu (deadlock), dan transaksi untuk event yang sama dilayani satu per satu.
 // Promo paling akhir karena satu promo bisa dipakai beberapa event: transaksi yang sedang
 // memegang kunci promo tidak lagi menunggu kunci lain, jadi tidak ada lingkaran saling tunggu.
+//
+// Check-in (paket checkin) juga mengunci event lebih dulu, baru tiket. Mengunci tiket saja tidak cukup:
+// INSERT ke tabel anak (mis. checkins.event_id) memeriksa foreign key dan memasang kunci baca pada
+// baris event. Melompati langkah 1 menyebabkan deadlock dengan alur lain (terbukti di test).
 
 // KunciEvent mengunci baris event sampai transaksi selesai (SELECT ... FOR UPDATE).
 // Berbeda dengan kunciEventDraft, fungsi ini tidak memeriksa status;
