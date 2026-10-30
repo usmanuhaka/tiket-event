@@ -13,6 +13,7 @@ import (
 	"github.com/joho/godotenv"
 
 	"github.com/usmanuhaka/tiket-event/internal/auth"
+	"github.com/usmanuhaka/tiket-event/internal/checkin"
 	"github.com/usmanuhaka/tiket-event/internal/event"
 	"github.com/usmanuhaka/tiket-event/internal/order"
 	"github.com/usmanuhaka/tiket-event/internal/promo"
@@ -63,6 +64,9 @@ func main() {
 
 	// pembatalan tiket (pembeli) dan pembatalan event (admin), dengan refund
 	ticket.RegisterRoutes(mux, db)
+
+	// pemeriksaan tiket di pintu masuk (khusus PETUGAS)
+	checkin.RegisterRoutes(mux, db)
 
 	// BR-10: worker berjalan di latar belakang (goroutine), memeriksa pesanan kedaluwarsa tiap 1 menit
 	go order.JalankanWorker(context.Background(), db, time.Minute)
