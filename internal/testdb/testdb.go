@@ -54,7 +54,7 @@ func Kosongkan(t *testing.T, db *sql.DB, tabel ...string) {
 // semuaTabel berisi semua tabel aplikasi, diurutkan dari tabel anak ke tabel induk.
 // Tambahkan tabel baru di sini setiap ada migrasi baru.
 var semuaTabel = []string{
-	"refunds", "ticket_transfers",
+	"checkins", "refunds", "ticket_transfers",
 	"tickets", "orders",
 	"promo_categories", "promo_codes",
 	"price_tiers", "ticket_categories", "events",
