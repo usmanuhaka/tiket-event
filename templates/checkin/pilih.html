@@ -1,0 +1,29 @@
+{{define "content"}}
+    <div class="page-head clearfix">
+        <h3 class="float-left">Pemeriksaan Tiket</h3>
+    </div>
+    <p>Langkah 1: pilih event yang sedang Anda jaga hari ini.</p>
+
+    <table class="table">
+        <thead>
+            <tr>
+                <th>Event</th>
+                <th>Jam</th>
+                <th>Lokasi</th>
+                <th>Aksi</th>
+            </tr>
+        </thead>
+        <tbody>
+        {{range .Event}}
+            <tr>
+                <td>{{.Nama}}</td>
+                <td>{{tanggal .TanggalEvent}}</td>
+                <td>{{.Lokasi}}</td>
+                <td><a href="/petugas/event/{{.ID}}" class="btn btn-sm">Periksa Tiket</a></td>
+            </tr>
+        {{else}}
+            <tr><td colspan="4">Tidak ada event yang berlangsung hari ini.</td></tr>
+        {{end}}
+        </tbody>
+    </table>
+{{end}}
