@@ -35,6 +35,7 @@ Spesifikasi lengkap ada di [docs/PRD.md](docs/PRD.md).
 | `007_promo.sql` | tabel `promo_codes`, `promo_categories`, dan kolom `orders.promo_code_id` |
 | `008_refunds.sql` | tabel `refunds` (pengembalian dana per tiket) |
 | `009_transfers.sql` | kolom `tickets.sudah_dipindah` dan tabel `ticket_transfers` (kode lama/baru) |
+| `010_checkins.sql` | tabel `checkins` (tiket yang sudah masuk, petugas, waktu masuk) |
 
 Karena tanggal di `004` dihitung dengan `DATE_ADD(NOW(), ...)`, menjalankan ulang file itu tidak menggeser tanggal
 event yang sudah ada (`INSERT IGNORE` melewatinya). Untuk data baru, hapus dulu event contoh lewat phpMyAdmin.
@@ -80,6 +81,17 @@ Login sebagai admin, lalu buka menu **Kelola Event**:
   yang belum dipakai masuk, selama event masih `OPEN` dan belum dimulai.
 - Tiket mendapat **kode baru**; kode lama langsung tidak berlaku tetapi tetap dicatat di `ticket_transfers`.
 - Tiket yang sudah dipindahkan tidak bisa dibatalkan pembeli (tetap di-refund 100% jika event dibatalkan).
+
+## Pemeriksaan tiket di pintu (Petugas)
+1. Login sebagai `petugas@kampus.test`, buka menu **Pemeriksaan Tiket**, pilih event yang berlangsung **hari ini**.
+2. Ketik kode tiket lalu **Periksa**: tampil nama pemegang, kategori, dan status. Jika boleh, klik **Izinkan Masuk**.
+3. Tiket menjadi `USED` dan waktu masuknya dicatat. Pemindaian berikutnya ditolak "sudah dipakai masuk pada ...".
+
+Kode lama dari tiket yang sudah dipindahkan ditolak dengan nama penerimanya. Tiket untuk event lain, bukan hari event
+(tanggal WIB), belum dibayar, atau sudah dibatalkan juga ditolak dengan alasannya.
+
+**Demo:** data contoh tidak punya event hari ini. Sebagai admin, buat event dengan tanggal hari ini dan jam yang belum lewat,
+tambahkan kategori dan tahap, lalu buka penjualan; sebagai pembeli, pesan dan bayar; lalu periksa sebagai petugas.
 
 ## Akun demo
 Dibuat oleh `migrations/002_data_contoh_users.sql`.
