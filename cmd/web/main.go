@@ -17,6 +17,7 @@ import (
 	"github.com/usmanuhaka/tiket-event/internal/event"
 	"github.com/usmanuhaka/tiket-event/internal/order"
 	"github.com/usmanuhaka/tiket-event/internal/promo"
+	"github.com/usmanuhaka/tiket-event/internal/report"
 	"github.com/usmanuhaka/tiket-event/internal/ticket"
 	"github.com/usmanuhaka/tiket-event/internal/web"
 )
@@ -67,6 +68,9 @@ func main() {
 
 	// pemeriksaan tiket di pintu masuk (khusus PETUGAS)
 	checkin.RegisterRoutes(mux, db)
+
+	// laporan penjualan dan pendapatan (khusus ADMIN)
+	report.RegisterRoutes(mux, db)
 
 	// BR-10: worker berjalan di latar belakang (goroutine), memeriksa pesanan kedaluwarsa tiap 1 menit
 	go order.JalankanWorker(context.Background(), db, time.Minute)
