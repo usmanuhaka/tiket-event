@@ -14,6 +14,12 @@
             <li><a href="/pesanan">Pesanan Saya</a></li>
         </ul>
     {{end}}
+    {{if eq .Peran "PETUGAS"}}
+        <p class="menu-title">Petugas</p>
+        <ul>
+            <li><a href="/petugas">Pemeriksaan Tiket</a></li>
+        </ul>
+    {{end}}
     {{if eq .Peran "ADMIN"}}
         <p class="menu-title">Admin</p>
         <ul>
