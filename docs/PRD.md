@@ -166,3 +166,23 @@ Lebih sederhana, tetapi kursi dari tahap yang sudah lewat menjadi hangus.
    menunggu tiket. Dengan mengunci event lebih dulu, semua alur memakai urutan yang sama sehingga tidak bisa
    saling menunggu. Tiket `ACTIVE` sudah pasti berarti event belum dibatalkan (pembatalan event mengubah
    tiketnya dalam transaksi yang sama), jadi status event tidak perlu diperiksa terpisah.
+
+### Keputusan: laporan penjualan dan pendapatan (BR-27, BR-28)
+1. **Hanya ADMIN.** Halaman daftar event (dengan total terjual dan bersih) dan halaman laporan per event
+   yang menampilkan angka per tahap, per kategori, dan total event.
+2. **Terjual** = tiket berstatus `ACTIVE`, `USED`, atau `REFUNDED` (pernah dibayar). Tiket `HELD` dan `CANCELLED`
+   (termasuk dari pesanan `EXPIRED` atau pesanan `HELD` yang ikut batal saat event dibatalkan) tidak dihitung.
+3. **Pendapatan kotor** = jumlah `tickets.harga` (harga tahap sebelum promo) dari tiket terjual.
+   **Potongan promo** = jumlah `tickets.potongan`. **Refund** = jumlah `refunds.jumlah`.
+   **Pendapatan bersih (BR-28)** = kotor − potongan − refund.
+4. **Event yang dibatalkan penyelenggara.** Rumus BR-28 dipakai apa adanya:
+   - tanpa pembatalan pembeli sebelumnya, semua tiket terjual di-refund 100% sehingga bersih Rp0;
+   - jika ada pembeli yang membatalkan sebelumnya (refund 75%), tiket itu sudah `REFUNDED` dan tidak di-refund lagi
+     saat event dibatalkan (BR-20 hanya untuk tiket `ACTIVE`), sehingga **sisa 25% dari harga bayarnya tetap
+     tercatat sebagai pendapatan**.
+
+   Alasannya: laporan harus sama dengan uang yang benar-benar tertahan. Menampilkan Rp0 untuk kasus kedua
+   berarti laporan tidak cocok dengan refund yang tercatat, atau perlu refund tambahan 25% yang tidak diatur BR-20.
+5. **Satu snapshot.** Laporan dibaca di dalam satu transaksi baca (`READ ONLY`, `REPEATABLE READ`), sehingga
+   angka per tahap, per kategori, dan total berasal dari keadaan database pada satu saat yang sama, walaupun
+   penjualan sedang berjalan. Transaksi ini tidak mengunci apa pun, jadi tidak menahan pemesanan atau check-in.
