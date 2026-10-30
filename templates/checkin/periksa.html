@@ -1,0 +1,39 @@
+{{define "content"}}
+    <div class="page-head clearfix">
+        <h3 class="float-left">{{.Event.Nama}}</h3>
+        <a href="/petugas" class="btn btn-light float-right">&larr; Ganti event</a>
+    </div>
+    <p>{{tanggal .Event.TanggalEvent}} &middot; {{.Event.Lokasi}}</p>
+
+    <p>Langkah 2: ketik kode tiket, lalu periksa.</p>
+    <form class="form-baris" method="GET" action="/petugas/event/{{.Event.ID}}">
+        <div class="form-group">
+            <label for="kode">Kode Tiket</label>
+            <input type="text" id="kode" name="kode" value="{{.Kode}}" class="form-control kode" placeholder="TKT-XXXXXXXX" autofocus required>
+        </div>
+        <button type="submit" class="btn">Periksa</button>
+    </form>
+
+    {{if .Alasan}}
+        <div class="alert alert-error"><strong>Tidak boleh masuk.</strong> {{.Alasan}}</div>
+    {{end}}
+
+    {{if .Ada}}
+        <table class="table" style="max-width: 520px">
+            <tbody>
+                <tr><th width="160px">Kode</th><td><span class="kode">{{.Tiket.Kode}}</span></td></tr>
+                <tr><th>Nama Pemegang</th><td><strong>{{.Tiket.NamaPemegang}}</strong></td></tr>
+                <tr><th>Kategori</th><td>{{.Tiket.NamaKategori}}</td></tr>
+                <tr><th>Event</th><td>{{.Tiket.NamaEvent}}</td></tr>
+                <tr><th>Status</th><td><span class="badge badge-{{.Tiket.Status}}">{{.Tiket.Status}}</span></td></tr>
+            </tbody>
+        </table>
+
+        {{if .BolehMasuk}}
+            <form method="POST" action="/petugas/event/{{.Event.ID}}/masuk">
+                <input type="hidden" name="kode" value="{{.Tiket.Kode}}">
+                <button class="btn">Izinkan Masuk</button>
+            </form>
+        {{end}}
+    {{end}}
+{{end}}
