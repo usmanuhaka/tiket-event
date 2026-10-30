@@ -147,3 +147,19 @@ Lebih sederhana, tetapi kursi dari tahap yang sudah lewat menjadi hangus.
    (`tanggal_event > sekarang`). Pemindahan tidak terikat batas H-7 seperti pembatalan.
 4. **Tiket yang sudah dipindahkan tidak bisa dibatalkan oleh pembeli** (cek tambahan pada BR-17).
    Jika event dibatalkan penyelenggara (BR-20), tiket tersebut tetap di-refund 100% ke pemilik pesanan.
+
+### Keputusan: pemeriksaan tiket di pintu (BR-24 s.d. BR-26)
+1. **Hanya peran PETUGAS.** Halaman dua langkah: pilih event yang berlangsung hari ini, lalu ketik kode.
+   Sistem menampilkan nama pemegang, kategori, dan status (BR-24); tombol "Izinkan Masuk" memproses check-in.
+2. **Hari event (BR-25)** dihitung per tanggal kalender Asia/Jakarta: tiket diterima sepanjang tanggal event
+   (00:00 sampai 23:59:59 WIB), tidak bergantung jam mulai event.
+3. **Pencarian kode** mendahulukan `tickets.kode_tiket` (kode yang berlaku). Jika tidak ada, dicari di
+   `ticket_transfers.kode_lama`; kode lama ditolak dengan pesan yang menyebut nama penerima pemindahan.
+4. **Setiap penolakan punya pesan jelas:** kode tidak ditemukan, kode lama (sudah dipindahkan), tiket untuk event
+   lain, tiket REFUNDED/CANCELLED/HELD, sudah dipakai (beserta waktu masuknya), dan bukan hari event.
+5. **Check-in (BR-26)** mengubah tiket menjadi `USED` dan mencatat satu baris `checkins` (petugas dan waktu masuk)
+   dalam satu transaksi. `checkins.ticket_id` UNIQUE sebagai pengaman terakhir.
+6. **Penguncian.** Check-in hanya mengunci baris tiket. Ini cukup karena semua alur lain yang mengubah tiket
+   (batal tiket, pindah tiket, batal event) juga mengunci baris tiket itu, dan tiket `ACTIVE` sudah pasti
+   berarti event belum dibatalkan (pembatalan event mengubah tiketnya dalam transaksi yang sama).
+   Karena check-in hanya meminta satu kunci, ia tidak bisa menjadi bagian dari lingkaran saling tunggu (deadlock).
