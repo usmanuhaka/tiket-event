@@ -159,7 +159,10 @@ Lebih sederhana, tetapi kursi dari tahap yang sudah lewat menjadi hangus.
    lain, tiket REFUNDED/CANCELLED/HELD, sudah dipakai (beserta waktu masuknya), dan bukan hari event.
 5. **Check-in (BR-26)** mengubah tiket menjadi `USED` dan mencatat satu baris `checkins` (petugas dan waktu masuk)
    dalam satu transaksi. `checkins.ticket_id` UNIQUE sebagai pengaman terakhir.
-6. **Penguncian.** Check-in hanya mengunci baris tiket. Ini cukup karena semua alur lain yang mengubah tiket
-   (batal tiket, pindah tiket, batal event) juga mengunci baris tiket itu, dan tiket `ACTIVE` sudah pasti
-   berarti event belum dibatalkan (pembatalan event mengubah tiketnya dalam transaksi yang sama).
-   Karena check-in hanya meminta satu kunci, ia tidak bisa menjadi bagian dari lingkaran saling tunggu (deadlock).
+6. **Penguncian: event lalu tiket**, sama dengan urutan di semua alur lain.
+   Rencana awal hanya mengunci baris tiket, tetapi test konkurensi menghasilkan deadlock: `INSERT INTO checkins`
+   memeriksa foreign key `event_id`, dan pemeriksaan itu memasang kunci baca pada baris event. Check-in yang sudah
+   memegang kunci tiket lalu menunggu baris event, sementara pembatalan/pemindahan memegang baris event dan
+   menunggu tiket. Dengan mengunci event lebih dulu, semua alur memakai urutan yang sama sehingga tidak bisa
+   saling menunggu. Tiket `ACTIVE` sudah pasti berarti event belum dibatalkan (pembatalan event mengubah
+   tiketnya dalam transaksi yang sama), jadi status event tidak perlu diperiksa terpisah.
