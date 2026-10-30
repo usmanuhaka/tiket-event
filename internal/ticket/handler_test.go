@@ -103,3 +103,49 @@ func TestAlurBatalEventLewatHTTP(t *testing.T) {
 		t.Errorf("event tidak ada: status %d, mau 404", w.Code)
 	}
 }
+
+func TestAlurPindahTiketLewatHTTP(t *testing.T) {
+	db := bukaDBKosong(t)
+	e := siapkanEvent(t, db, time.Now().Add(hari(30)), []tahapUji{{"Normal", 150000, 10, 20}})
+	budi := auth.User{ID: buatPembeli(t, db), Nama: "Budi", Role: auth.PeranPembeli}
+	ani := auth.User{ID: buatPembeli(t, db), Nama: "Ani", Role: auth.PeranPembeli}
+	p := buatPesanan(t, db, budi.ID, e, "PAID", 1, 0, 0, tanpaPromo())
+	mux := siapkanMux(t, db)
+	path := fmt.Sprintf("/tiket/%d/pindah", p.tiketID[0])
+
+	kirimForm := func(u *auth.User, metode string, isi url.Values) *httptest.ResponseRecorder {
+		r := httptest.NewRequest(metode, path, strings.NewReader(isi.Encode()))
+		r.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+		r = auth.DenganPengguna(r, *u)
+		w := httptest.NewRecorder()
+		mux.ServeHTTP(w, r)
+		return w
+	}
+
+	// form tampil untuk pemilik; pembeli lain dan admin ditolak
+	if w := kirimForm(&budi, "GET", url.Values{}); w.Code != http.StatusOK || !strings.Contains(w.Body.String(), "Pemegang 1") {
+		t.Errorf("form pindah: status %d", w.Code)
+	}
+	if w := kirimForm(&ani, "GET", url.Values{}); w.Code != http.StatusNotFound {
+		t.Errorf("pembeli lain membuka form: status %d, mau 404", w.Code)
+	}
+	if w := kirimForm(&admin, "POST", url.Values{"nama_baru": {"X"}}); w.Code != http.StatusForbidden {
+		t.Errorf("admin memindahkan: status %d, mau 403", w.Code)
+	}
+
+	// nama kosong -> form tampil lagi dengan pesan (400)
+	if w := kirimForm(&budi, "POST", url.Values{"nama_baru": {" "}}); w.Code != http.StatusBadRequest || !strings.Contains(w.Body.String(), "wajib diisi") {
+		t.Errorf("nama kosong: status %d", w.Code)
+	}
+
+	// berhasil -> kembali ke pesanan
+	w := kirimForm(&budi, "POST", url.Values{"nama_baru": {"Cici"}})
+	if w.Code != http.StatusSeeOther || w.Header().Get("Location") != fmt.Sprintf("/pesanan/%d", p.orderID) {
+		t.Fatalf("pindah: %d ke %q", w.Code, w.Header().Get("Location"))
+	}
+	// kedua kalinya -> form dengan alasan BR-21, nama yang diketik tetap ada
+	w = kirimForm(&budi, "POST", url.Values{"nama_baru": {"Dodi"}})
+	if w.Code != http.StatusBadRequest || !strings.Contains(w.Body.String(), "satu kali") || !strings.Contains(w.Body.String(), `value="Dodi"`) {
+		t.Errorf("pindah kedua: status %d", w.Code)
+	}
+}

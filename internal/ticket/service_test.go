@@ -1,6 +1,7 @@
 package ticket
 
 import (
+	"strings"
 	"testing"
 	"time"
 
@@ -68,5 +69,64 @@ func TestHitungRefund(t *testing.T) {
 		if got := HitungRefund(k.bayar, k.persen); got != k.mau {
 			t.Errorf("HitungRefund(%d, %d%%) = %d, mau %d", k.bayar, k.persen, got, k.mau)
 		}
+	}
+}
+
+// ===== BR-21 dan BR-23 =====
+
+func TestValidasiNamaBaru(t *testing.T) {
+	kasus := []struct {
+		baru     string
+		mauLulus bool
+	}{
+		{"Ani", true},
+		{"  Ani  ", true},
+		{"", false},
+		{"   ", false},
+		{"budi", false}, // sama dengan nama lama (huruf besar/kecil diabaikan)
+		{strings.Repeat("a", 101), false},
+	}
+	for _, k := range kasus {
+		err := ValidasiNamaBaru("Budi", k.baru)
+		if k.mauLulus != (err == nil) {
+			t.Errorf("nama baru %q: mau lulus=%v, dapat %v", k.baru, k.mauLulus, err)
+		}
+	}
+}
+
+func TestCekBolehPindah(t *testing.T) {
+	sekarang := wib(time.December, 1, 10, 0, 0)
+	besok := sekarang.Add(24 * time.Hour)
+
+	kasus := []struct {
+		nama          string
+		statusTiket   string
+		sudahDipindah bool
+		statusEvent   string
+		tanggalEvent  time.Time
+		pesan         string // kosong berarti boleh
+	}{
+		{"ACTIVE, event OPEN besok", "ACTIVE", false, "OPEN", besok, ""},
+		{"H-1 masih boleh (tidak terikat H-7)", "ACTIVE", false, "OPEN", sekarang.Add(time.Hour), ""},
+		{"BR-21 sudah pernah dipindah", "ACTIVE", true, "OPEN", besok, "satu kali"},
+		{"BR-23 sudah dipakai masuk", "USED", false, "OPEN", besok, "sudah dipakai"},
+		{"BR-23 sudah di-refund", "REFUNDED", false, "OPEN", besok, "tidak aktif"},
+		{"BR-23 belum dibayar", "HELD", false, "OPEN", besok, "tidak aktif"},
+		{"BR-23 event dibatalkan", "ACTIVE", false, "CANCELLED", besok, "tidak sedang dibuka"},
+		{"BR-23 event sudah dimulai", "ACTIVE", false, "OPEN", sekarang.Add(-time.Minute), "sudah dimulai"},
+	}
+	for _, k := range kasus {
+		t.Run(k.nama, func(t *testing.T) {
+			err := CekBolehPindah(k.statusTiket, k.sudahDipindah, k.statusEvent, k.tanggalEvent, sekarang)
+			if k.pesan == "" {
+				if err != nil {
+					t.Errorf("mau boleh, dapat %v", err)
+				}
+				return
+			}
+			if err == nil || !strings.Contains(err.Error(), k.pesan) {
+				t.Errorf("mau ditolak berisi %q, dapat %v", k.pesan, err)
+			}
+		})
 	}
 }
