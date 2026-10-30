@@ -1,0 +1,32 @@
+{{define "content"}}
+    <div class="page-head clearfix">
+        <h3 class="float-left">Laporan Penjualan</h3>
+    </div>
+    <table class="table">
+        <thead>
+            <tr>
+                <th>Event</th>
+                <th>Tanggal</th>
+                <th>Status</th>
+                <th class="num">Terjual</th>
+                <th class="num">Pendapatan Bersih</th>
+                <th>Aksi</th>
+            </tr>
+        </thead>
+        <tbody>
+        {{range .Event}}
+            <tr>
+                <td>{{.Nama}}</td>
+                <td>{{tanggal .TanggalEvent}}</td>
+                <td><span class="badge badge-{{.Status}}">{{.Status}}</span></td>
+                <td class="num">{{.Terjual}}</td>
+                <td class="num">{{rupiah .Bersih}}</td>
+                <td><a href="/admin/laporan/{{.ID}}" class="btn btn-sm">Lihat Laporan</a></td>
+            </tr>
+        {{else}}
+            <tr><td colspan="6">Belum ada event yang dibuka.</td></tr>
+        {{end}}
+        </tbody>
+    </table>
+    <p class="form-hint">Event berstatus DRAFT belum punya penjualan dan tidak ditampilkan.</p>
+{{end}}
