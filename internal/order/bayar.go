@@ -10,6 +10,7 @@ import (
 
 	"github.com/usmanuhaka/tiket-event/internal/event"
 	"github.com/usmanuhaka/tiket-event/internal/promo"
+	"github.com/usmanuhaka/tiket-event/internal/ticket"
 )
 
 // ErrWaktuBayarHabis dikembalikan jika pembeli menekan "Konfirmasi Pembayaran" setelah 15 menit
@@ -88,7 +89,7 @@ func beriKodeTiket(ctx context.Context, tx *sql.Tx, tiketID int64) error {
 	for percobaan := 1; percobaan <= 3; percobaan++ {
 		_, err := tx.ExecContext(ctx,
 			"UPDATE tickets SET kode_tiket = ?, status = ?, updated_at = NOW() WHERE id = ?",
-			BuatKodeTiket(), TiketActive, tiketID,
+			ticket.BuatKodeTiket(), TiketActive, tiketID,
 		)
 		if err == nil {
 			return nil

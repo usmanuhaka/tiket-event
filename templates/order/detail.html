@@ -66,15 +66,20 @@
                 <td class="num">{{if .Potongan}}-{{rupiah .Potongan}}{{else}}-{{end}}</td>
                 <td class="num">{{rupiah .HargaBayar}}</td>
                 <td>{{if .KodeTiket}}<span class="kode">{{.KodeTiket}}</span>{{else}}-{{end}}</td>
-                <td><span class="badge badge-{{.Status}}">{{.Status}}</span></td>
+                <td><span class="badge badge-{{.Status}}">{{.Status}}</span>{{if .SudahDipindah}} <span class="badge">Dipindahkan</span>{{end}}</td>
                 <td class="num">{{if .PersenRefund}}{{rupiah .Refund}} ({{.PersenRefund}}%){{else}}-{{end}}</td>
                 <td>
+                    <div class="actions">
+                    {{if .BisaPindah}}
+                        <a href="/tiket/{{.ID}}/pindah" class="btn btn-light btn-sm">Pindahkan</a>
+                    {{end}}
                     {{if .BisaBatal}}
                         <form method="POST" action="/tiket/{{.ID}}/batal"
                             onsubmit="return confirm('Batalkan tiket atas nama {{.NamaPemegang}}? Dana dikembalikan {{rupiah .EstimasiRefund}} (75%).')">
                             <button class="btn btn-danger btn-sm">Batalkan</button>
                         </form>
                     {{end}}
+                    </div>
                 </td>
             </tr>
         {{end}}

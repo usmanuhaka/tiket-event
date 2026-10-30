@@ -303,13 +303,18 @@ func tampilPesanan(w http.ResponseWriter, r *http.Request, db *sql.DB, tpl halam
 		}
 	}
 
-	// tombol "Batalkan" per tiket: hanya tiket ACTIVE, event masih OPEN, dan belum lewat H-7 (BR-17)
+	// tombol per tiket:
+	//   "Batalkan"  : ACTIVE, belum pernah dipindahkan, event masih OPEN, dan belum lewat H-7 (BR-17, PRD §9)
+	//   "Pindahkan" : memenuhi syarat BR-21 dan BR-23
 	now := time.Now()
 	data.BatasBatal = ticket.BatasBatal(p.TanggalEvent)
 	for i, t := range data.Pesanan.Tiket {
-		if t.Status == TiketActive && p.StatusEvent == event.StatusOpen && ticket.BolehBatal(p.TanggalEvent, now) {
+		if t.Status == TiketActive && !t.SudahDipindah && p.StatusEvent == event.StatusOpen && ticket.BolehBatal(p.TanggalEvent, now) {
 			data.Pesanan.Tiket[i].BisaBatal = true
 			data.Pesanan.Tiket[i].EstimasiRefund = ticket.HitungRefund(t.HargaBayar, ticket.PersenRefundPembeli)
+		}
+		if ticket.CekBolehPindah(t.Status, t.SudahDipindah, p.StatusEvent, p.TanggalEvent, now) == nil {
+			data.Pesanan.Tiket[i].BisaPindah = true
 		}
 	}
 	web.RenderStatus(w, tpl.detail, data, status)

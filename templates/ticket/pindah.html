@@ -1,0 +1,30 @@
+{{define "content"}}
+    <div class="page-head clearfix">
+        <h3 class="float-left">Pindahkan Tiket</h3>
+        <a href="/pesanan/{{.Tiket.OrderID}}" class="btn btn-light float-right">&larr; Kembali ke pesanan</a>
+    </div>
+
+    <table class="table" style="max-width: 480px">
+        <tbody>
+            <tr><th width="160px">Event</th><td>{{.Tiket.NamaEvent}}</td></tr>
+            <tr><th>Kategori</th><td>{{.Tiket.NamaKategori}}</td></tr>
+            <tr><th>Pemegang sekarang</th><td>{{.Tiket.NamaPemegang}}</td></tr>
+        </tbody>
+    </table>
+
+    <div class="alert alert-error" style="max-width: 480px">
+        Pemindahan hanya bisa dilakukan <strong>satu kali</strong>. Setelah dipindahkan, kode tiket lama
+        langsung tidak berlaku dan tiket tidak bisa dibatalkan lagi.
+    </div>
+
+    <form class="form" method="post" action="/tiket/{{.Tiket.ID}}/pindah">
+        <div class="form-group">
+            <label for="nama_baru">Nama Pemegang Baru</label>
+            <input type="text" id="nama_baru" name="nama_baru" value="{{.NamaBaru}}" class="form-control" maxlength="100" required>
+        </div>
+        <div class="form-actions">
+            <button type="submit" class="btn">Pindahkan</button>
+            <a href="/pesanan/{{.Tiket.OrderID}}" class="btn btn-light">Batal</a>
+        </div>
+    </form>
+{{end}}
