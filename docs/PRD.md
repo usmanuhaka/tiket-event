@@ -12,7 +12,7 @@ Selama ini penjualan memakai formulir daring dan konfirmasi transfer manual, seh
 | Pembeli | Memesan tiket, membayar (simulasi), membatalkan, memindahkan tiket |
 | Petugas pintu | Memeriksa tiket dengan kode tiket |
 
-Login cukup sederhana (email + password, password di-hash dengan bcrypt), dan peran disimpan di tabel user.
+Login memakai email dan password (password di-hash dengan bcrypt), dan peran disimpan di tabel `users`.
 
 ## 3. Lingkup fitur
 1. Pengelolaan event, kategori tiket, dan tahapan harga
@@ -74,11 +74,12 @@ Login cukup sederhana (email + password, password di-hash dengan bcrypt), dan pe
 - **BR-28** Pendapatan bersih = pendapatan kotor − total potongan promo − total refund.
 
 ## 5. Status
+- Event: `DRAFT` → `OPEN` → `CANCELLED`
 - Pesanan: `HELD` → `PAID` | `EXPIRED` | `CANCELLED`
 - Tiket: `HELD` → `ACTIVE` → `USED` | `CANCELLED` | `REFUNDED`
 
 ## 6. Gambaran tabel
-`users`, `events`, `ticket_categories`, `price_tiers`, `orders`, `tickets`,
+`users`, `sessions`, `events`, `ticket_categories`, `price_tiers`, `orders`, `tickets`,
 `promo_codes`, `promo_categories`, `refunds`, `ticket_transfers`, `checkins`
 
 ## 7. Di luar lingkup
@@ -91,18 +92,27 @@ Login cukup sederhana (email + password, password di-hash dengan bcrypt), dan pe
 - Semua BR punya test otomatis dan `go test ./...` hijau
 - Ada test pemesanan bersamaan yang membuktikan tidak ada oversell (BR-12)
 - Alur lengkap bisa didemokan: buat event → pesan → bayar → transfer → check-in → lihat laporan
-- Saya bisa menjelaskan setiap aturan dan di mana kodenya berada
 
-## 9. Asumsi yang saya ambil (soal tidak menyebutkan)
-BR-04, BR-08, BR-10 (kuota kembali ke tahap asal), BR-15, BR-18 (dihitung dari harga setelah promo), BR-22, BR-23.
-Siapkan alasan untuk tiap asumsi ini saat presentasi, atau sesuaikan jika dosen punya ketentuan lain.
+## 9. Asumsi dan Keputusan Desain
+Bagian ini mencatat penafsiran atas aturan yang tidak dirinci di bagian 4, beserta alasannya.
+
+### Ringkasan asumsi
+- **BR-04** Selama event `DRAFT`, jumlah kuota tahap boleh kurang dari kuota kategori (tahap ditambah satu per satu).
+  Kesamaan persis diperiksa saat penjualan dibuka (`DRAFT` → `OPEN`), bersama BR-01 s.d. BR-03.
+- **BR-08** Alokasi dihitung per kategori. Tahap yang batas tanggalnya sudah lewat dilewati. Jika total sisa kuota
+  tidak cukup, seluruh pesanan ditolak (tidak ada pesanan sebagian).
+- **BR-10, BR-19** Pengembalian kuota ke tahap yang sudah lewat: lihat keputusan di bawah.
+- **BR-15** Pesanan berisi berapa pun tiket dihitung satu pemakaian. Kode yang tidak berlaku untuk satu pun tiket
+  di pesanan ditolak, sehingga pemakaiannya tidak terbuang.
+- **BR-18** Refund dihitung dari `harga_bayar` tiket (setelah potongan promo) dan dibulatkan ke bawah.
+- **BR-22, BR-23** Lihat keputusan pemindahan tiket di bawah.
 
 ### Keputusan: kuota kembali ke tahap yang batas tanggalnya sudah lewat (BR-10, BR-19)
 **Masalah.** Kuota dari pesanan yang `EXPIRED` (BR-10) atau tiket yang dibatalkan pembeli (BR-19)
 dikembalikan "ke tahap asal". Jika batas tanggal tahap asal sudah lewat, tahap itu tidak akan aktif lagi
 (BR-05), sehingga kursinya tidak bisa dijual ke siapa pun.
 
-**Keputusan (Opsi B).** Saat 1 kuota dikembalikan:
+**Keputusan.** Saat 1 kuota dikembalikan:
 1. Jika tahap asal masih berlaku (batas tanggal belum lewat), kuota kembali ke tahap asal: `sisa_kuota + 1`.
 2. Jika tahap asal sudah lewat, 1 kuota **dipindahkan** ke tahap berikutnya (urutan lebih besar)
    yang masih berlaku: tahap asal `kuota − 1`, tahap tujuan `kuota + 1` dan `sisa_kuota + 1`.
@@ -114,8 +124,18 @@ Tahap yang kuotanya menjadi 0 karena pemindahan ini disembunyikan di tampilan.
 Kolom `tickets.price_tier_id` tidak berubah, karena mencatat harga yang dulu dibayar.
 Aturan ini ada di satu fungsi bersama (`event.KembalikanKuota`), dipakai pesanan kedaluwarsa dan pembatalan tiket.
 
-**Opsi yang tidak dipilih (Opsi A).** Selalu kembali ke tahap asal, sesuai teks BR-10 apa adanya.
+**Alternatif yang tidak dipilih.** Selalu kembali ke tahap asal, sesuai teks BR-10 apa adanya.
 Lebih sederhana, tetapi kursi dari tahap yang sudah lewat menjadi hangus.
+
+### Keputusan: kode promo (BR-13 s.d. BR-16)
+1. **Promo tidak terikat ke satu event.** Cakupannya ditentukan daftar kategori, yang boleh berasal dari beberapa event.
+2. **Potongan dihitung per tiket**: `harga × persen / 100`, dibulatkan ke bawah, hanya untuk tiket dari kategori terdaftar.
+   Nilainya disimpan di `tickets.potongan` dan `tickets.harga_bayar`.
+3. **Pemakaian dikembalikan saat pesanan `EXPIRED`**, termasuk jika promo sudah dihapus (soft delete) setelah
+   pesanan dibuat. Promo yang sudah dihapus tidak bisa dipakai pesanan baru.
+4. **Baris promo dikunci paling akhir** (sesudah event, pesanan, dan tahap), karena satu promo bisa diperebutkan
+   transaksi dari event yang berbeda. Transaksi yang memegang kunci promo tidak lagi menunggu kunci lain,
+   sehingga tidak terbentuk lingkaran saling tunggu.
 
 ### Keputusan: pembatalan tiket, pembatalan event, dan refund (BR-17 s.d. BR-20)
 1. **Siapa yang boleh membatalkan tiket.** Hanya pembeli pemilik pesanan. Refund dicatat atas nama
@@ -159,13 +179,12 @@ Lebih sederhana, tetapi kursi dari tahap yang sudah lewat menjadi hangus.
    lain, tiket REFUNDED/CANCELLED/HELD, sudah dipakai (beserta waktu masuknya), dan bukan hari event.
 5. **Check-in (BR-26)** mengubah tiket menjadi `USED` dan mencatat satu baris `checkins` (petugas dan waktu masuk)
    dalam satu transaksi. `checkins.ticket_id` UNIQUE sebagai pengaman terakhir.
-6. **Penguncian: event lalu tiket**, sama dengan urutan di semua alur lain.
-   Rencana awal hanya mengunci baris tiket, tetapi test konkurensi menghasilkan deadlock: `INSERT INTO checkins`
-   memeriksa foreign key `event_id`, dan pemeriksaan itu memasang kunci baca pada baris event. Check-in yang sudah
-   memegang kunci tiket lalu menunggu baris event, sementara pembatalan/pemindahan memegang baris event dan
-   menunggu tiket. Dengan mengunci event lebih dulu, semua alur memakai urutan yang sama sehingga tidak bisa
-   saling menunggu. Tiket `ACTIVE` sudah pasti berarti event belum dibatalkan (pembatalan event mengubah
-   tiketnya dalam transaksi yang sama), jadi status event tidak perlu diperiksa terpisah.
+6. **Penguncian: event lalu tiket**, sama dengan urutan di semua alur lain. Mengunci baris tiket saja tidak cukup:
+   `INSERT INTO checkins` memeriksa foreign key `event_id`, dan pemeriksaan itu memasang kunci baca pada baris event.
+   Check-in yang sudah memegang kunci tiket lalu menunggu baris event, sementara pembatalan/pemindahan memegang
+   baris event dan menunggu tiket, sehingga terjadi deadlock (terbukti di test konkurensi). Dengan mengunci event
+   lebih dulu, semua alur memakai urutan yang sama. Tiket `ACTIVE` sudah pasti berarti event belum dibatalkan
+   (pembatalan event mengubah tiketnya dalam transaksi yang sama), jadi status event tidak perlu diperiksa terpisah.
 
 ### Keputusan: laporan penjualan dan pendapatan (BR-27, BR-28)
 1. **Hanya ADMIN.** Halaman daftar event (dengan total terjual dan bersih) dan halaman laporan per event
