@@ -92,7 +92,7 @@ func Wajib(next http.HandlerFunc, peran ...string) http.HandlerFunc {
 			web.RenderStatus(w, tplPesan, web.DataPesan{
 				Halaman: Halaman(r),
 				Judul:   "Akses ditolak",
-				Isi:     "Anda tidak punya akses ke halaman ini.",
+				Isi:     "Akun ini tidak punya akses ke halaman ini.",
 			}, http.StatusForbidden)
 			return
 		}

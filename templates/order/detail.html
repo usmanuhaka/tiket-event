@@ -19,7 +19,7 @@
 
     {{if .BisaBayar}}
         <div class="alert alert-sukses">
-            Tiket ditahan untuk Anda. Selesaikan pembayaran sebelum <strong>{{tanggal .Pesanan.ExpiresAt}}</strong>,
+            Tiket sedang ditahan. Selesaikan pembayaran sebelum <strong>{{tanggal .Pesanan.ExpiresAt}}</strong>,
             setelah itu pesanan otomatis dibatalkan.
         </div>
         <form method="POST" action="/pesanan/{{.Pesanan.ID}}/bayar" style="margin-bottom: 20px">
