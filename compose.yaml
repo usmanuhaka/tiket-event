@@ -1,0 +1,44 @@
+services:
+  db:
+    image: docker.io/library/mysql:8.0
+    container_name: tiket-event-db
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:?Set MYSQL_ROOT_PASSWORD in .env}
+      MYSQL_DATABASE: ${MYSQL_DATABASE:?Set MYSQL_DATABASE in .env}
+      MYSQL_USER: ${MYSQL_USER:?Set MYSQL_USER in .env}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD:?Set MYSQL_PASSWORD in .env}
+    command: ["--character-set-server=utf8mb4", "--collation-server=utf8mb4_unicode_ci"]
+    volumes:
+      - mysql_data:/var/lib/mysql
+      - ./migrations:/docker-entrypoint-initdb.d:ro,Z
+    healthcheck:
+      test: ["CMD-SHELL", "MYSQL_PWD=\"$${MYSQL_PASSWORD}\" mysql --protocol=TCP -h 127.0.0.1 -u\"$${MYSQL_USER}\" \"$${MYSQL_DATABASE}\" -e 'SELECT 1' >/dev/null 2>&1"]
+      interval: 5s
+      timeout: 5s
+      retries: 30
+      start_period: 30s
+    networks:
+      default:
+        aliases: [db]
+
+  web:
+    build: .
+    image: localhost/tiket-event:latest
+    container_name: tiket-event-web
+    restart: unless-stopped
+    environment:
+      DB_DSN: ${DB_DSN:?Set DB_DSN in .env}
+    ports:
+      - "127.0.0.1:8080:8080"
+    depends_on:
+      db:
+        condition: service_healthy
+
+volumes:
+  mysql_data:
+    name: tiket-event-mysql
+
+networks:
+  default:
+    name: tiket-event
