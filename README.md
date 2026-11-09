@@ -12,11 +12,41 @@ Spesifikasi, aturan bisnis (BR-01 s.d. BR-28), serta asumsi dan keputusan desain
 - Pemeriksaan tiket di pintu masuk (petugas)
 - Laporan penjualan dan pendapatan per event
 
-## Kebutuhan
-- Go 1.26.6
-- XAMPP (MariaDB 10.4) untuk database lokal
+## Cara Menjalankan
 
-## Menyiapkan database (XAMPP)
+Ada dua cara menjalankan aplikasi. Pilih **salah satu**:
+
+| | Cara 1: XAMPP | Cara 2: Container (Podman/Docker) |
+|---|---|---|
+| Database | MariaDB 10.4 bawaan XAMPP | MySQL 8 di container |
+| Go di komputer | Perlu (Go 1.26.6) | Tidak perlu (dibangun di dalam image) |
+| Migrasi | Manual, jalankan file satu per satu | Otomatis saat volume database pertama dibuat |
+| Cocok untuk | Pengembangan dan debugging lokal | Mencoba cepat dan lingkungan yang konsisten |
+
+Daftar file migrasi (dipakai oleh kedua cara):
+
+| File | Isi |
+|---|---|
+| `001_users.sql` | tabel `users` dan `sessions` |
+| `002_data_contoh_users.sql` | akun demo (lihat bagian [Akun demo](#akun-demo)) |
+| `003_events.sql` | tabel `events`, `ticket_categories`, `price_tiers` |
+| `004_data_contoh_events.sql` | 2 event contoh dengan tanggal relatif dari saat file dijalankan: "Konser Akhir Tahun" (OPEN, ±45 hari lagi) dan "Seminar Produksi Musik" (DRAFT, sengaja belum lengkap untuk contoh "Buka Penjualan" yang ditolak) |
+| `005_orders.sql` | tabel `orders` dan `tickets` |
+| `006_tiers_kuota_nol.sql` | mengizinkan kuota tahap 0 (hasil pemindahan kuota, lihat PRD §9) |
+| `007_promo.sql` | tabel `promo_codes`, `promo_categories`, dan kolom `orders.promo_code_id` |
+| `008_refunds.sql` | tabel `refunds` (pengembalian dana per tiket) |
+| `009_transfers.sql` | kolom `tickets.sudah_dipindah` dan tabel `ticket_transfers` (kode lama/baru) |
+| `010_checkins.sql` | tabel `checkins` (tiket yang sudah masuk, petugas, waktu masuk) |
+
+---
+
+## Cara 1: Setup Database dan Menjalankan dengan XAMPP
+
+### Kebutuhan
+- Go 1.26.6
+- XAMPP (MariaDB 10.4)
+
+### 1. Siapkan database
 1. Buka **XAMPP Control Panel**, klik **Start** pada baris MySQL.
 2. Buat dua database (lewat phpMyAdmin di `http://localhost/phpmyadmin`, atau perintah di bawah):
    ```powershell
@@ -28,35 +58,117 @@ Spesifikasi, aturan bisnis (BR-01 s.d. BR-28), serta asumsi dan keputusan desain
    C:\xampp\mysql\bin\mysql.exe -uroot --default-character-set=utf8mb4 tiket_event -e "source migrations/001_nama.sql"
    C:\xampp\mysql\bin\mysql.exe -uroot --default-character-set=utf8mb4 tiket_event_test -e "source migrations/001_nama.sql"
    ```
-   Bisa juga lewat menu **Import** di phpMyAdmin. Jalankan hanya file yang belum pernah dijalankan.
+   Ganti `001_nama.sql` dengan nama file sebenarnya. Bisa juga lewat menu **Import** di phpMyAdmin.
+   Jalankan hanya file yang belum pernah dijalankan.
+
    File `*_data_contoh_*.sql` cukup dijalankan ke `tiket_event` (test membuat datanya sendiri),
    dan aman dijalankan ulang karena memakai `INSERT IGNORE`.
 
-| File | Isi |
-|---|---|
-| `001_users.sql` | tabel `users` dan `sessions` |
-| `002_data_contoh_users.sql` | akun demo (lihat di bawah) |
-| `003_events.sql` | tabel `events`, `ticket_categories`, `price_tiers` |
-| `004_data_contoh_events.sql` | 2 event contoh dengan tanggal relatif dari saat file dijalankan: "Konser Akhir Tahun" (OPEN, ±45 hari lagi) dan "Seminar Produksi Musik" (DRAFT, sengaja belum lengkap untuk contoh "Buka Penjualan" yang ditolak) |
-| `005_orders.sql` | tabel `orders` dan `tickets` |
-| `006_tiers_kuota_nol.sql` | mengizinkan kuota tahap 0 (hasil pemindahan kuota, lihat PRD §9) |
-| `007_promo.sql` | tabel `promo_codes`, `promo_categories`, dan kolom `orders.promo_code_id` |
-| `008_refunds.sql` | tabel `refunds` (pengembalian dana per tiket) |
-| `009_transfers.sql` | kolom `tickets.sudah_dipindah` dan tabel `ticket_transfers` (kode lama/baru) |
-| `010_checkins.sql` | tabel `checkins` (tiket yang sudah masuk, petugas, waktu masuk) |
+   Karena tanggal di `004` dihitung dengan `DATE_ADD(NOW(), ...)`, menjalankan ulang file itu tidak menggeser tanggal
+   event yang sudah ada (`INSERT IGNORE` melewatinya). Untuk data baru, hapus dulu event contoh lewat phpMyAdmin.
 
-Karena tanggal di `004` dihitung dengan `DATE_ADD(NOW(), ...)`, menjalankan ulang file itu tidak menggeser tanggal
-event yang sudah ada (`INSERT IGNORE` melewatinya). Untuk data baru, hapus dulu event contoh lewat phpMyAdmin.
-
-## Konfigurasi
-Salin `.env.example` menjadi `.env`. Isinya sudah cocok untuk XAMPP bawaan (user `root` tanpa password).
+### 2. Konfigurasi
+Salin `.env.example` menjadi `.env`. Contoh tersebut memakai database container, jadi untuk XAMPP bawaan
+ganti koneksinya menjadi:
+```dotenv
+DB_DSN=root@tcp(127.0.0.1:3306)/tiket_event?parseTime=true&loc=Asia%2FJakarta&time_zone=%27%2B07%3A00%27
+TEST_DB_DSN=root@tcp(127.0.0.1:3306)/tiket_event_test?parseTime=true&loc=Asia%2FJakarta&time_zone=%27%2B07%3A00%27
+```
 File `.env` tidak ikut di-commit.
 
-## Menjalankan
+### 3. Jalankan aplikasi
 ```powershell
 go run ./cmd/web
 ```
 Buka `http://localhost:8080`. Perintah dijalankan dari root proyek karena template dibaca dari folder `templates/`.
+
+---
+
+## Cara 2: Setup Database dan Menjalankan dengan Container (Podman atau Docker)
+
+`Dockerfile` membangun binary Go statis dan menjalankannya sebagai pengguna non-root.
+MySQL 8 berjalan di container terpisah; port database tidak dibuka ke host.
+Semua file `migrations/*.sql` dijalankan otomatis berurutan saat volume database pertama kali dibuat,
+termasuk akun dan event demo. Ini adalah konfigurasi pengembangan lokal, bukan produksi.
+
+### Kebutuhan
+- Podman atau Docker
+- Provider Compose (`podman compose`/`podman-compose`, atau Docker Compose) untuk opsi 2A
+
+### Siapkan `.env`
+Dari root proyek:
+```sh
+cp .env.example .env
+chmod 600 .env
+```
+
+Ganti `MYSQL_ROOT_PASSWORD` dan `MYSQL_PASSWORD` dengan password acak, lalu samakan password
+pada `DB_DSN` dengan `MYSQL_PASSWORD`. Gunakan password heksadesimal agar tidak perlu escaping
+pada DSN/Compose (contoh generator: `openssl rand -hex 24`).
+`DB_DSN` memakai host `db:3306`, user `MYSQL_USER`, dan database `MYSQL_DATABASE`.
+
+### Opsi 2A: Compose (disarankan)
+
+```sh
+podman compose up -d --build     # Docker: docker compose up -d --build
+podman compose logs -f           # Docker: docker compose logs -f
+```
+
+Buka **http://localhost:8080**. Aplikasi hanya dipublikasikan ke loopback host.
+Container web menunggu MySQL sehat sebelum mulai.
+
+```sh
+podman compose down       # hentikan container; data tetap tersimpan
+podman compose down -v    # PERHATIAN: hapus juga seluruh data database
+```
+
+Catatan penting:
+- Migrasi baru tidak otomatis dijalankan pada volume yang sudah berisi database.
+  Jalankan hanya file migrasi baru secara manual; jangan menghapus volume untuk upgrade data penting.
+- Mengubah password di `.env` juga tidak mengubah password pada database yang sudah diinisialisasi.
+
+### Opsi 2B: Tanpa provider Compose
+
+Setelah menyiapkan `.env` seperti di atas, perintah berikut menjalankan konfigurasi yang sama
+menggunakan Podman langsung. Jalankan dari root proyek. Ekspor variabel tanpa mencetak password:
+
+```sh
+set -a
+. ./.env
+set +a
+podman build -t localhost/tiket-event:latest .
+podman network create tiket-event
+podman volume create tiket-event-mysql
+podman run -d --name tiket-event-db --network tiket-event --network-alias db \
+  --restart unless-stopped \
+  --env MYSQL_ROOT_PASSWORD --env MYSQL_DATABASE --env MYSQL_USER --env MYSQL_PASSWORD \
+  -v tiket-event-mysql:/var/lib/mysql \
+  -v "$(pwd)/migrations:/docker-entrypoint-initdb.d:ro,Z" \
+  --health-cmd='MYSQL_PWD="$MYSQL_PASSWORD" mysql --protocol=TCP -h 127.0.0.1 -u"$MYSQL_USER" "$MYSQL_DATABASE" -e "SELECT 1" >/dev/null 2>&1' \
+  --health-interval=5s --health-timeout=5s --health-retries=30 --health-start-period=30s \
+  docker.io/library/mysql:8.0 \
+  --character-set-server=utf8mb4 --collation-server=utf8mb4_unicode_ci
+```
+
+Tunggu sampai `podman inspect --format '{{.State.Health.Status}}' tiket-event-db`
+menampilkan `healthy`, lalu mulai web:
+
+```sh
+podman run -d --name tiket-event-web --network tiket-event \
+  --restart unless-stopped --env DB_DSN \
+  -p 127.0.0.1:8080:8080 localhost/tiket-event:latest
+podman logs tiket-event-web
+```
+
+Untuk berhenti: `podman stop tiket-event-web tiket-event-db`.
+Untuk mulai lagi: `podman start tiket-event-db`, tunggu sehat, lalu `podman start tiket-event-web`.
+
+Catatan:
+- Jangan menjalankan cara langsung dan Compose bersamaan karena nama container/volume sama.
+- Pengguna Docker bisa memakai perintah yang sama dengan mengganti `podman` menjadi `docker`
+  (opsi `:Z` pada volume hanya berlaku di sistem dengan SELinux; hapus jika Docker menolaknya).
+
+---
 
 ## Akun demo
 Dibuat oleh `migrations/002_data_contoh_users.sql`.
@@ -72,6 +184,7 @@ Dibuat oleh `migrations/002_data_contoh_users.sql`.
 Pembeli baru bisa mendaftar sendiri lewat halaman `/daftar`. Akun admin dan petugas hanya dibuat lewat data contoh.
 
 ## Test dan pengecekan
+Membutuhkan Go dan database test (`tiket_event_test`, lihat Cara 1).
 ```powershell
 go test ./...
 go vet ./...
