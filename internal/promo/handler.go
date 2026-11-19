@@ -29,6 +29,8 @@ type dataList struct {
 // Isian disimpan apa adanya supaya form yang gagal tetap terisi.
 type dataForm struct {
 	web.Halaman
+	Judul       string
+	Action      string
 	Pilihan     []PilihanKategori
 	Dipilih     map[int64]bool // kategori yang dicentang
 	KodeInput   string
@@ -51,6 +53,8 @@ func RegisterRoutes(mux *http.ServeMux, db *sql.DB) {
 	mux.HandleFunc("GET /admin/promo", admin(promoListHandler(db, tpl)))
 	mux.HandleFunc("GET /admin/promo/form", admin(promoFormHandler(db, tpl)))
 	mux.HandleFunc("POST /admin/promo", admin(promoSimpanHandler(db, tpl)))
+	mux.HandleFunc("GET /admin/promo/{id}/edit", admin(promoEditFormHandler(db, tpl)))
+	mux.HandleFunc("POST /admin/promo/{id}/edit", admin(promoUpdateHandler(db, tpl)))
 	mux.HandleFunc("POST /admin/promo/{id}/hapus", admin(promoHapusHandler(db, tpl)))
 }
 
@@ -67,19 +71,24 @@ func promoListHandler(db *sql.DB, tpl halaman) http.HandlerFunc {
 
 func promoFormHandler(db *sql.DB, tpl halaman) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		tampilForm(w, r, db, tpl, dataForm{Dipilih: map[int64]bool{}}, http.StatusOK)
+		tampilForm(w, r, db, tpl, dataForm{
+			Judul: "Tambah Promo", Action: "/admin/promo", Dipilih: map[int64]bool{},
+		}, http.StatusOK)
 	}
 }
 
 func promoSimpanHandler(db *sql.DB, tpl halaman) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		// ParseForm perlu dipanggil supaya r.PostForm["kategori"] (banyak kotak centang) terisi
+		r.Body = http.MaxBytesReader(w, r.Body, 64<<10)
 		if err := r.ParseForm(); err != nil {
 			http.Error(w, "Isi form tidak bisa dibaca", http.StatusBadRequest)
 			return
 		}
 
 		data := dataForm{
+			Judul:       "Tambah Promo",
+			Action:      "/admin/promo",
 			Dipilih:     map[int64]bool{},
 			KodeInput:   r.PostFormValue("kode"),
 			PersenInput: r.PostFormValue("persen"),
@@ -102,6 +111,83 @@ func promoSimpanHandler(db *sql.DB, tpl halaman) http.HandlerFunc {
 			tampilForm(w, r, db, tpl, data, http.StatusBadRequest)
 		default:
 			gagalServer(w, "simpan promo", err)
+		}
+	}
+}
+
+func promoEditFormHandler(db *sql.DB, tpl halaman) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		id, err := strconv.ParseInt(r.PathValue("id"), 10, 64)
+		if err != nil || id <= 0 {
+			tampilPesan(w, r, tpl, http.StatusBadRequest, "Alamat tidak valid", "ID pada alamat halaman harus berupa angka.")
+			return
+		}
+
+		p, err := ambilPromo(r.Context(), db, id)
+		switch {
+		case errors.Is(err, ErrTidakDitemukan):
+			tampilPesan(w, r, tpl, http.StatusNotFound, "Tidak ditemukan", "Promo tidak ditemukan atau sudah dihapus.")
+		case err != nil:
+			gagalServer(w, "ambil promo", err)
+		default:
+			dipilih := make(map[int64]bool, len(p.KategoriID))
+			for _, kategoriID := range p.KategoriID {
+				dipilih[kategoriID] = true
+			}
+			tampilForm(w, r, db, tpl, dataForm{
+				Judul:       "Edit Promo",
+				Action:      "/admin/promo/" + strconv.FormatInt(id, 10) + "/edit",
+				Dipilih:     dipilih,
+				KodeInput:   p.Kode,
+				PersenInput: strconv.Itoa(p.Persen),
+				KuotaInput:  strconv.Itoa(p.KuotaPemakaian),
+			}, http.StatusOK)
+		}
+	}
+}
+
+func promoUpdateHandler(db *sql.DB, tpl halaman) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		id, err := strconv.ParseInt(r.PathValue("id"), 10, 64)
+		if err != nil || id <= 0 {
+			tampilPesan(w, r, tpl, http.StatusBadRequest, "Alamat tidak valid", "ID pada alamat halaman harus berupa angka.")
+			return
+		}
+
+		r.Body = http.MaxBytesReader(w, r.Body, 64<<10)
+		if err := r.ParseForm(); err != nil {
+			http.Error(w, "Isi form tidak bisa dibaca", http.StatusBadRequest)
+			return
+		}
+
+		data := dataForm{
+			Judul:       "Edit Promo",
+			Action:      "/admin/promo/" + strconv.FormatInt(id, 10) + "/edit",
+			Dipilih:     map[int64]bool{},
+			KodeInput:   r.PostFormValue("kode"),
+			PersenInput: r.PostFormValue("persen"),
+			KuotaInput:  r.PostFormValue("kuota"),
+		}
+		p, err := bacaFormPromo(r, &data)
+		if err == nil {
+			err = ValidasiPromo(p)
+		}
+		if err == nil {
+			p.ID = id
+			err = ubahPromo(r.Context(), db, p)
+		}
+
+		var salah KesalahanInput
+		switch {
+		case errors.Is(err, ErrTidakDitemukan):
+			tampilPesan(w, r, tpl, http.StatusNotFound, "Tidak ditemukan", "Promo tidak ditemukan atau sudah dihapus.")
+		case err == nil:
+			http.Redirect(w, r, "/admin/promo", http.StatusSeeOther)
+		case errors.As(err, &salah):
+			data.Error = salah.Pesan
+			tampilForm(w, r, db, tpl, data, http.StatusBadRequest)
+		default:
+			gagalServer(w, "ubah promo", err)
 		}
 	}
 }

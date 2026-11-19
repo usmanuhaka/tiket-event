@@ -45,6 +45,27 @@ func TestValidasiPromo(t *testing.T) {
 	}
 }
 
+func TestValidasiKuotaEdit(t *testing.T) {
+	kasus := []struct {
+		nama     string
+		kuota    int
+		terpakai int
+		mauLulus bool
+	}{
+		{"kuota sama dengan terpakai", 2, 2, true},
+		{"kuota lebih besar dari terpakai", 5, 2, true},
+		{"kuota kurang dari terpakai", 1, 2, false},
+	}
+	for _, k := range kasus {
+		t.Run(k.nama, func(t *testing.T) {
+			err := ValidasiKuotaEdit(k.kuota, k.terpakai)
+			if k.mauLulus != (err == nil) {
+				t.Errorf("mau lulus=%v, dapat %v", k.mauLulus, err)
+			}
+		})
+	}
+}
+
 // ===== BR-14 =====
 
 func TestHitungPotonganDibulatkanKeBawah(t *testing.T) {

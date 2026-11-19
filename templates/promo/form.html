@@ -1,10 +1,10 @@
 {{define "content"}}
     <div class="page-head clearfix">
-        <h3 class="float-left">Tambah Promo</h3>
+        <h3 class="float-left">{{.Judul}}</h3>
         <a href="/admin/promo" class="btn btn-light float-right">&larr; Kembali</a>
     </div>
 
-    <form class="form" method="post" action="/admin/promo">
+    <form class="form" method="post" action="{{.Action}}">
         <div class="form-group">
             <label for="kode">Kode Promo</label>
             <input type="text" value="{{.KodeInput}}" id="kode" name="kode" class="form-control" maxlength="30" placeholder="Contoh: HEMAT15" required>

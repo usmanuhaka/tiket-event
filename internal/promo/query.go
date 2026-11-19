@@ -77,6 +77,39 @@ func ambilSemuaPromo(ctx context.Context, db *sql.DB) ([]Promo, error) {
 	return hasil, rowsKategori.Err()
 }
 
+// ambilPromo mengambil promo yang belum dihapus beserta kategori yang dipilih.
+func ambilPromo(ctx context.Context, db *sql.DB, id int64) (Promo, error) {
+	var p Promo
+	err := db.QueryRowContext(ctx,
+		`SELECT id, kode, persen, kuota_pemakaian, terpakai
+		FROM promo_codes WHERE id = ? AND deleted_at IS NULL`, id,
+	).Scan(&p.ID, &p.Kode, &p.Persen, &p.KuotaPemakaian, &p.Terpakai)
+	if errors.Is(err, sql.ErrNoRows) {
+		return p, ErrTidakDitemukan
+	}
+	if err != nil {
+		return p, err
+	}
+
+	rows, err := db.QueryContext(ctx,
+		"SELECT category_id FROM promo_categories WHERE promo_code_id = ? ORDER BY category_id", p.ID)
+	if err != nil {
+		return p, err
+	}
+	defer rows.Close()
+	for rows.Next() {
+		var kategoriID int64
+		if err := rows.Scan(&kategoriID); err != nil {
+			return p, err
+		}
+		p.KategoriID = append(p.KategoriID, kategoriID)
+	}
+	if err := rows.Err(); err != nil {
+		return p, err
+	}
+	return p, nil
+}
+
 // ambilPilihanKategori mengambil kategori yang bisa dipilih di form promo:
 // kategori dari event DRAFT dan OPEN yang belum dihapus
 func ambilPilihanKategori(ctx context.Context, db *sql.DB) ([]PilihanKategori, error) {
@@ -111,29 +144,9 @@ func simpanPromo(ctx context.Context, db *sql.DB, p Promo) (int64, error) {
 	}
 	defer tx.Rollback()
 
-	// buang id kategori yang dobel
-	unik := []int64{}
-	sudah := map[int64]bool{}
-	for _, id := range p.KategoriID {
-		if !sudah[id] {
-			sudah[id] = true
-			unik = append(unik, id)
-		}
-	}
-
-	// semua kategori harus ada dan event-nya masih DRAFT/OPEN
-	var jumlah int
-	err = tx.QueryRowContext(ctx,
-		`SELECT COUNT(*) FROM ticket_categories c JOIN events e ON e.id = c.event_id
-		WHERE c.id IN (`+tandaTanya(len(unik))+`)
-		AND c.deleted_at IS NULL AND e.deleted_at IS NULL AND e.status IN ('DRAFT', 'OPEN')`,
-		keArgs(unik)...,
-	).Scan(&jumlah)
+	unik, err := validasiKategoriPromo(ctx, tx, p.KategoriID)
 	if err != nil {
 		return 0, err
-	}
-	if jumlah != len(unik) {
-		return 0, salahInput("Ada kategori yang tidak valid atau event-nya sudah dibatalkan")
 	}
 
 	res, err := tx.ExecContext(ctx,
@@ -160,6 +173,93 @@ func simpanPromo(ctx context.Context, db *sql.DB, p Promo) (int64, error) {
 		}
 	}
 	return id, tx.Commit()
+}
+
+// ubahPromo memperbarui promo beserta kategorinya dalam satu transaksi.
+func ubahPromo(ctx context.Context, db *sql.DB, p Promo) error {
+	tx, err := db.BeginTx(ctx, nil)
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+
+	var terpakai int
+	var dihapus sql.NullTime
+	err = tx.QueryRowContext(ctx,
+		"SELECT terpakai, deleted_at FROM promo_codes WHERE id = ? FOR UPDATE", p.ID,
+	).Scan(&terpakai, &dihapus)
+	if errors.Is(err, sql.ErrNoRows) {
+		return ErrTidakDitemukan
+	}
+	if err != nil {
+		return err
+	}
+	if dihapus.Valid {
+		return ErrTidakDitemukan
+	}
+	if err := ValidasiKuotaEdit(p.KuotaPemakaian, terpakai); err != nil {
+		return err
+	}
+
+	unik, err := validasiKategoriPromo(ctx, tx, p.KategoriID)
+	if err != nil {
+		return err
+	}
+
+	_, err = tx.ExecContext(ctx,
+		"UPDATE promo_codes SET kode = ?, persen = ?, kuota_pemakaian = ?, updated_at = NOW() WHERE id = ?",
+		p.Kode, p.Persen, p.KuotaPemakaian, p.ID,
+	)
+	if err != nil {
+		var errMysql *mysql.MySQLError
+		if errors.As(err, &errMysql) && errMysql.Number == kodeDuplikat {
+			return ErrKodeTerdaftar
+		}
+		return err
+	}
+
+	if _, err := tx.ExecContext(ctx, "DELETE FROM promo_categories WHERE promo_code_id = ?", p.ID); err != nil {
+		return err
+	}
+	for _, kategoriID := range unik {
+		if _, err := tx.ExecContext(ctx,
+			"INSERT INTO promo_categories (promo_code_id, category_id) VALUES (?, ?)", p.ID, kategoriID,
+		); err != nil {
+			return err
+		}
+	}
+	return tx.Commit()
+}
+
+// validasiKategoriPromo membuang kategori duplikat dan memastikan semuanya aktif
+// serta berasal dari event DRAFT atau OPEN.
+func validasiKategoriPromo(ctx context.Context, tx *sql.Tx, kategoriID []int64) ([]int64, error) {
+	unik := make([]int64, 0, len(kategoriID))
+	sudah := make(map[int64]bool, len(kategoriID))
+	for _, id := range kategoriID {
+		if !sudah[id] {
+			sudah[id] = true
+			unik = append(unik, id)
+		}
+	}
+	if len(unik) == 0 {
+		return nil, salahInput("Pilih minimal 1 kategori tempat promo berlaku")
+	}
+
+	var jumlah int
+	err := tx.QueryRowContext(ctx,
+		`SELECT COUNT(*) FROM ticket_categories c JOIN events e ON e.id = c.event_id
+		WHERE c.id IN (`+tandaTanya(len(unik))+`)
+		AND c.deleted_at IS NULL AND e.deleted_at IS NULL AND e.status IN ('DRAFT', 'OPEN')`,
+		keArgs(unik)...,
+	).Scan(&jumlah)
+	if err != nil {
+		return nil, err
+	}
+	if jumlah != len(unik) {
+		return nil, salahInput("Ada kategori yang tidak valid atau event-nya sudah dibatalkan")
+	}
+	return unik, nil
 }
 
 // hapusPromo melakukan soft delete. Kode tidak bisa dipakai pesanan baru,

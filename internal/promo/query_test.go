@@ -137,6 +137,124 @@ func TestKategoriTidakValidDitolakTanpaMenyimpanPromo(t *testing.T) {
 	}
 }
 
+func TestEditPromoMengubahDataDanKategoriTanpaMengubahPemakaian(t *testing.T) {
+	db := bukaDBKosong(t)
+	ctx := context.Background()
+	vip := buatKategori(t, db, "Konser", "OPEN", "VIP")
+	umum := buatKategori(t, db, "Seminar", "DRAFT", "Umum")
+	id, err := simpanPromo(ctx, db, Promo{
+		Kode: "HEMAT15", Persen: 15, KuotaPemakaian: 10, KategoriID: []int64{vip},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	for i := 0; i < 2; i++ {
+		if err := denganTx(t, db, func(tx *sql.Tx) error { return PakaiPromo(ctx, tx, id) }); err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	err = ubahPromo(ctx, db, Promo{
+		ID: id, Kode: "BARU20", Persen: 20, KuotaPemakaian: 5, KategoriID: []int64{umum},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	hasil, err := ambilPromo(ctx, db, id)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if hasil.Kode != "BARU20" || hasil.Persen != 20 || hasil.KuotaPemakaian != 5 || hasil.Terpakai != 2 {
+		t.Errorf("data promo setelah edit tidak sesuai: %+v", hasil)
+	}
+	if len(hasil.KategoriID) != 1 || hasil.KategoriID[0] != umum {
+		t.Errorf("kategori setelah edit %v, mau [%d]", hasil.KategoriID, umum)
+	}
+}
+
+func TestEditPromoDitolakTanpaMengubahDataJikaKuotaKodeAtauKategoriTidakValid(t *testing.T) {
+	db := bukaDBKosong(t)
+	ctx := context.Background()
+	vip := buatKategori(t, db, "Konser", "OPEN", "VIP")
+	umum := buatKategori(t, db, "Seminar", "DRAFT", "Umum")
+	batal := buatKategori(t, db, "Konser Batal", "CANCELLED", "Batal")
+	id, err := simpanPromo(ctx, db, Promo{
+		Kode: "HEMAT15", Persen: 15, KuotaPemakaian: 10, KategoriID: []int64{vip},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	for i := 0; i < 2; i++ {
+		if err := denganTx(t, db, func(tx *sql.Tx) error { return PakaiPromo(ctx, tx, id) }); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if _, err := simpanPromo(ctx, db, Promo{
+		Kode: "PROMO-LAIN", Persen: 10, KuotaPemakaian: 5, KategoriID: []int64{umum},
+	}); err != nil {
+		t.Fatal(err)
+	}
+
+	kasus := []struct {
+		nama string
+		p    Promo
+		err  error
+	}{
+		{"kuota kurang dari terpakai", Promo{ID: id, Kode: "BARU20", Persen: 20, KuotaPemakaian: 1, KategoriID: []int64{umum}}, nil},
+		{"kode milik promo lain", Promo{ID: id, Kode: "PROMO-LAIN", Persen: 20, KuotaPemakaian: 5, KategoriID: []int64{umum}}, ErrKodeTerdaftar},
+		{"kategori event dibatalkan", Promo{ID: id, Kode: "BARU20", Persen: 20, KuotaPemakaian: 5, KategoriID: []int64{batal}}, nil},
+	}
+	for _, k := range kasus {
+		t.Run(k.nama, func(t *testing.T) {
+			err := ubahPromo(ctx, db, k.p)
+			if k.err != nil {
+				if !errors.Is(err, k.err) {
+					t.Errorf("dapat %v, mau %v", err, k.err)
+				}
+			} else {
+				var salah KesalahanInput
+				if !errors.As(err, &salah) {
+					t.Errorf("mau KesalahanInput, dapat %v", err)
+				}
+			}
+
+			hasil, errBaca := ambilPromo(ctx, db, id)
+			if errBaca != nil {
+				t.Fatal(errBaca)
+			}
+			if hasil.Kode != "HEMAT15" || hasil.Persen != 15 || hasil.KuotaPemakaian != 10 || hasil.Terpakai != 2 ||
+				len(hasil.KategoriID) != 1 || hasil.KategoriID[0] != vip {
+				t.Errorf("data berubah setelah edit ditolak: %+v", hasil)
+			}
+		})
+	}
+}
+
+func TestEditPromoYangSudahDihapusTidakDitemukan(t *testing.T) {
+	db := bukaDBKosong(t)
+	ctx := context.Background()
+	vip := buatKategori(t, db, "Konser", "OPEN", "VIP")
+	id, err := simpanPromo(ctx, db, Promo{
+		Kode: "HEMAT15", Persen: 15, KuotaPemakaian: 10, KategoriID: []int64{vip},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := hapusPromo(ctx, db, id); err != nil {
+		t.Fatal(err)
+	}
+
+	if _, err := ambilPromo(ctx, db, id); !errors.Is(err, ErrTidakDitemukan) {
+		t.Errorf("ambil promo dihapus: dapat %v, mau ErrTidakDitemukan", err)
+	}
+	if err := ubahPromo(ctx, db, Promo{
+		ID: id, Kode: "BARU20", Persen: 20, KuotaPemakaian: 5, KategoriID: []int64{vip},
+	}); !errors.Is(err, ErrTidakDitemukan) {
+		t.Errorf("edit promo dihapus: dapat %v, mau ErrTidakDitemukan", err)
+	}
+}
+
 func TestPromoDihapusTidakBisaDipakaiTapiPemakaianTetapBisaDikembalikan(t *testing.T) {
 	db := bukaDBKosong(t)
 	ctx := context.Background()

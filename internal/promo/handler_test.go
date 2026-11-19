@@ -111,3 +111,56 @@ func TestAlurAdminTambahDanHapusPromo(t *testing.T) {
 		t.Errorf("hapus dua kali: status %d, mau 404", w.Code)
 	}
 }
+
+func TestHandlerEditPromo(t *testing.T) {
+	db := bukaDBKosong(t)
+	vip := buatKategori(t, db, "Konser", "OPEN", "VIP")
+	id, err := simpanPromo(t.Context(), db, Promo{
+		Kode: "HEMAT15", Persen: 15, KuotaPemakaian: 10, KategoriID: []int64{vip},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	mux := siapkanMux(t, db)
+	if w := kirim(mux, &pembeli, "GET", "/admin/promo/1/edit", nil); w.Code != http.StatusForbidden {
+		t.Errorf("pembeli: status %d, mau 403", w.Code)
+	}
+
+	path := fmt.Sprintf("/admin/promo/%d/edit", id)
+	w := kirim(mux, &admin, "GET", path, nil)
+	if w.Code != http.StatusOK {
+		t.Fatalf("form edit: status %d\n%s", w.Code, w.Body.String())
+	}
+	for _, isi := range []string{
+		"Edit Promo", path, `value="HEMAT15"`, `value="15"`, `value="10"`,
+		fmt.Sprintf(`value="%d" checked`, vip),
+	} {
+		if !strings.Contains(w.Body.String(), isi) {
+			t.Errorf("form edit tidak berisi %q", isi)
+		}
+	}
+
+	formUbah := url.Values{
+		"kode":     {"BARU20"},
+		"persen":   {"20"},
+		"kuota":    {"5"},
+		"kategori": {fmt.Sprint(vip)},
+	}
+	if w := kirim(mux, &admin, "POST", path, formUbah); w.Code != http.StatusSeeOther {
+		t.Fatalf("simpan edit: status %d\n%s", w.Code, w.Body.String())
+	}
+	p, err := ambilPromo(t.Context(), db, id)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if p.Kode != "BARU20" || p.Persen != 20 || p.KuotaPemakaian != 5 {
+		t.Errorf("promo setelah edit tidak sesuai: %+v", p)
+	}
+
+	if w := kirim(mux, &admin, "GET", "/admin/promo/999999/edit", nil); w.Code != http.StatusNotFound {
+		t.Errorf("id tidak ada: status %d, mau 404", w.Code)
+	}
+	if w := kirim(mux, &admin, "GET", "/admin/promo/bukan-angka/edit", nil); w.Code != http.StatusBadRequest {
+		t.Errorf("id bukan angka: status %d, mau 400", w.Code)
+	}
+}

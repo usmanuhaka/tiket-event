@@ -23,6 +23,7 @@
                     {{range .NamaKategori}}{{.}}<br>{{end}}
                 </td>
                 <td>
+                    <a href="/admin/promo/{{.ID}}/edit" class="btn btn-sm">Edit</a>
                     <form method="POST" action="/admin/promo/{{.ID}}/hapus"
                         onsubmit="return confirm('Hapus promo ini? Kode tidak bisa dipakai pesanan baru.')">
                         <button class="btn btn-danger btn-sm">Hapus</button>

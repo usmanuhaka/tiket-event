@@ -61,6 +61,14 @@ func ValidasiPromo(p Promo) error {
 	return nil
 }
 
+// ValidasiKuotaEdit memastikan kuota baru tidak lebih kecil dari pemakaian yang ada.
+func ValidasiKuotaEdit(kuotaBaru, terpakai int) error {
+	if kuotaBaru < terpakai {
+		return salahInput("Kuota pemakaian tidak boleh kurang dari jumlah yang sudah terpakai (%d)", terpakai)
+	}
+	return nil
+}
+
 // HitungPotongan (BR-14) menghitung potongan satu tiket: harga x persen / 100.
 // Pembagian bilangan bulat di Go membulatkan ke bawah, jadi pembeli tidak pernah
 // mendapat potongan lebih besar dari persentasenya (mis. 10% dari Rp99.999 = Rp9.999).
